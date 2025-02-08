@@ -6,7 +6,7 @@ class Nemo {
         this.x = x;
         this.y = y;
         this.size = 50;
-        this.speed = 3;       // Nemo의 최고 속도
+        this.speed = 3;       // Nemo의 최고 속도 (플랫폼에서 네모를 이동시킬 때 사용됨)
         this.team = team;
 
         // 팀에 따른 색상 설정: fillColor는 연한 색, borderColor는 진한 색
@@ -18,7 +18,7 @@ class Nemo {
             this.borderColor = "darkblue";  // 진한 파랑
         }
 
-        // 초기 속도 및 위치
+        // 초기 속도 및 위치 (이제 vx, vy는 사용하지 않습니다.)
         this.vx = 0;
         this.vy = 0;
 
@@ -30,28 +30,8 @@ class Nemo {
     }
 
     update() {
-        // 각 플랫폼에 대해 업데이트
-        this.platforms.forEach(platform => platform.update());  // MovePlatform과 AttackPlatform의 update 호출
-        
-        // 각 플랫폼에 대해 개별적으로 이동할 때, 이동은 MovePlatform에서 처리됨
-        this.platforms.forEach(platform => {
-            if (platform.mode === "extend" && platform.type === "move") {
-                // 현재 플랫폼이 extend 모드일 때만 이동 준비 후 이동합니다.
-                let extensionRatio = (platform.currentDistance - platform.baseDistance) / (platform.maxDistance - platform.baseDistance);
-                extensionRatio = Math.max(0, Math.min(1, extensionRatio));
-    
-                // 확장 비율에 따라 속도 계산
-                let moveSpeed = this.speed * extensionRatio;
-    
-                // 네모의 이동 속도 계산 (기본값은 0)
-                this.vx = Math.cos(platform.angle) * moveSpeed;
-                this.vy = Math.sin(platform.angle) * moveSpeed;
-    
-                // 네모의 위치 갱신 (월드 좌표는 그대로 업데이트)
-                this.x += this.vx;
-                this.y += this.vy;
-            }
-        });
+        // 각 플랫폼에 대해 업데이트 (플랫폼 내부에서 네모의 위치를 업데이트합니다)
+        this.platforms.forEach(platform => platform.update());
     }
     
     draw(ctx) {

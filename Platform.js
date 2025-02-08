@@ -1,104 +1,107 @@
 // Platform.js
 
-// 기본 Platform 클래스
 class Platform {
     constructor(parent, type = "move") {
         this.parent = parent;
-        this.baseDistance = 60;  // Nemo와의 기본 거리 (원 반지름)
-        this.maxDistance = 150;  // 최대 확장 거리 (이전보다 늘어남)
+        this.baseDistance = 100;  // 기본 거리
+        this.maxDistance = 150;  // 최대 확장 거리
         this.currentDistance = this.baseDistance;
-        this.angle = 0;          // 초기 각도 (오른쪽)
-        this.mode = "idle";      // 모드: "idle", "orbit", "extend"
-        this.targetAngle = 0;
-        this.orbitSpeed = 0.1;   // 공전 시 각속도 (라디안/프레임)
-        this.extendSpeed = 1;    // 확장 속도 (픽셀/프레임)
-        this.type = type;        // "move" 또는 "attack" 타입 설정
+        this.angle = 0;          // 현재 각도
+        this.mode = "idle";      // 모드: "idle", "move", "return"
+        this.type = type;
         
-        // 플랫폼은 Nemo의 자식이지만 Nemo가 이동해도 바로 따라오지 않고,
-        // 자체 좌표(this.x, this.y)를 보간(lerp)하여 이동합니다.
-        this.x = this.parent.x + Math.cos(this.angle) * this.currentDistance;
-        this.y = this.parent.y + Math.sin(this.angle) * this.currentDistance;
+        // 물리적 속성 추가
+        this.speed = 0;          // 현재 속도
+        this.maxSpeed = 5;       // 최대 속도
+        this.acceleration = 0.2; // 가속도
+        this.deceleration = 0.1; // 감속도
+        
+        // 플랫폼의 절대 좌표 (Nemo와 독립적)
+        this.x = parent.x + Math.cos(this.angle) * this.baseDistance;
+        this.y = parent.y + Math.sin(this.angle) * this.baseDistance;
     }
 
-    // 입력받은 방향(라디안)을 기반으로 목표 각도를 설정
+    // 입력 방향 설정 (라디안)
     setTargetAngle(newAngle) {
-        newAngle = newAngle % (2 * Math.PI);
-        if (newAngle < 0) newAngle += 2 * Math.PI;
+        this.angle = newAngle;
+        this.mode = "move"; // 이동 모드 활성화
+    }
 
-        let diff = newAngle - this.angle;
-        diff = ((diff + Math.PI) % (2 * Math.PI)) - Math.PI;
-        if (Math.abs(diff) > 0.1) {
-            this.mode = "orbit";
-            this.targetAngle = newAngle;
-            this.currentDistance = this.baseDistance;
-        } else {
-            if (this.mode !== "extend") {
-                this.mode = "extend";
-                this.currentDistance = this.baseDistance;
+    reset() {
+        this.mode = "return"; // 복귀 모드 활성화
+    }
+
+    update() {
+        // 공통 업데이트 로직
+        const dx = this.parent.x - this.x;
+        const dy = this.parent.y - this.y;
+        const baseAngle = Math.atan2(dy, dx); // Nemo를 향하는 기본 각도
+
+        if (this.mode === "move") {
+            // 가속 구간 ==========================================
+            this.speed += this.acceleration;
+            if (this.speed > this.maxSpeed) this.speed = this.maxSpeed;
+
+            // 직선 운동 계산
+            this.x += Math.cos(this.angle) * this.speed;
+            this.y += Math.sin(this.angle) * this.speed;
+
+        } else if (this.mode === "return") {
+            // 감속 및 복귀 구간 ==================================
+            this.speed -= this.deceleration;
+            if (this.speed < 0) this.speed = 0;
+
+            // Nemo 주변 기본 위치 계산
+            const targetX = this.parent.x + Math.cos(baseAngle) * this.baseDistance;
+            const targetY = this.parent.y + Math.sin(baseAngle) * this.baseDistance;
+
+            // 부드러운 복귀
+            this.x += (targetX - this.x) * 0.1;
+            this.y += (targetY - this.y) * 0.1;
+
+            if (Math.hypot(targetX - this.x, targetY - this.y) < 2) {
+                this.mode = "idle"; // 복귀 완료
             }
         }
     }
 
-    // 입력이 없을 경우 idle 모드로 전환
-    reset() {
-        this.mode = "idle";
-    }
-
-    // 기본적인 업데이트 처리
-    update() {
-        // 기본 로직을 여기에 넣을 수 있습니다.
-    }
-
-    // 기본적인 그리기 처리
-    draw(ctx) {
-        // 기본 그리기 처리 (이 클래스 자체로는 아무 것도 그리지 않음)
-    }
+    draw(ctx) { /* 기존 코드 유지 */ }
 }
 
-// MovePlatform은 Platform을 상속받아 이동 관련 로직을 추가합니다.
 class MovePlatform extends Platform {
     constructor(parent) {
         super(parent, "move");
+        this.width = 30;
+        this.height = 10;
     }
 
     update() {
-        // 이동 관련 로직
-        if (this.mode === "orbit") {
-            let diff = this.targetAngle - this.angle;
-            diff = ((diff + Math.PI) % (2 * Math.PI)) - Math.PI;
-            if (Math.abs(diff) < 0.05) {
-                this.angle = this.targetAngle;
-                this.mode = "extend";
-                this.currentDistance = this.baseDistance;
-            } else {
-                this.angle += (diff > 0 ? this.orbitSpeed : -this.orbitSpeed);
-            }
-        } else if (this.mode === "extend") {
-            // 이동 모드에서의 확장 처리
-            if (this.currentDistance < this.maxDistance) {
-                this.currentDistance += this.extendSpeed;
-                if (this.currentDistance > this.maxDistance) {
-                    this.currentDistance = this.maxDistance;
-                }
-            }
-        }
+        super.update(); // 기본 물리 업데이트
 
-        // 현재 각도와 거리로 플랫폼의 x, y 좌표를 업데이트
-        this.x = this.parent.x + Math.cos(this.angle) * this.currentDistance;
-        this.y = this.parent.y + Math.sin(this.angle) * this.currentDistance;
+        // 거리 제한 (Nemo로부터 최대 거리 초과 방지)
+        const distance = Math.hypot(this.x - this.parent.x, this.y - this.parent.y);
+        if (distance > this.maxDistance) {
+            const angle = Math.atan2(this.y - this.parent.y, this.x - this.parent.x);
+            this.x = this.parent.x + Math.cos(angle) * this.maxDistance;
+            this.y = this.parent.y + Math.sin(angle) * this.maxDistance;
+        }
     }
 
     draw(ctx) {
-        super.draw(ctx); // 기본 플랫폼 그리기
-        // MovePlatform에 특화된 추가적인 그리기 처리
         ctx.fillStyle = "black";
         ctx.save();
         ctx.translate(this.x, this.y);
-        ctx.rotate(this.angle + Math.PI / 2);  // 플랫폼의 긴 면이 Nemo를 향하도록 회전
-        ctx.fillRect(-15, -5, 30, 10);  // 이동하는 플랫폼 그리기
+        const angleToNemo = Math.atan2(
+            this.parent.y - this.y,
+            this.parent.x - this.x
+        );
+        ctx.rotate(angleToNemo + Math.PI/2); // 항상 Nemo를 향하도록 회전
+        ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
         ctx.restore();
     }
 }
+
+// AttackPlatform 클래스는 기존 코드 유지
 
 // AttackPlatform은 Platform을 상속받아 공격 관련 로직을 추가합니다.
 class AttackPlatform extends Platform {
@@ -114,7 +117,7 @@ class AttackPlatform extends Platform {
     }
 
     draw(ctx) {
-        super.draw(ctx); // 기본 플랫폼 그리기
+        super.draw(ctx); // 기본 플랫폼 그리기 (여기서는 아무 처리 없음)
         // AttackPlatform에 특화된 추가적인 그리기 처리
         ctx.fillStyle = "red";
         ctx.save();
