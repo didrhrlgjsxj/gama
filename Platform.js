@@ -1,16 +1,17 @@
 // Platform.js
 class Platform {
-    constructor(parent) {
+    constructor(parent, type = "move") {
         this.parent = parent;
         this.baseDistance = 50;  // Nemo와의 기본 거리 (원 반지름)
         this.maxDistance = 120;  // 최대 확장 거리 (이전보다 늘어남)
         this.currentDistance = this.baseDistance;
         this.angle = 0;          // 초기 각도 (오른쪽)
-        // 모드: "idle" (대기), "orbit" (플랫폼 공전), "extend" (플랫폼 확장)
-        this.mode = "idle";
+        this.mode = "idle";      // 모드: "idle", "orbit", "extend"
         this.targetAngle = 0;
         this.orbitSpeed = 0.1;   // 공전 시 각속도 (라디안/프레임)
         this.extendSpeed = 1;    // 확장 속도 (픽셀/프레임)
+        this.type = type;        // "move" 또는 "attack" 타입 설정
+        
         // 플랫폼은 Nemo의 자식이지만 Nemo가 이동해도 바로 따라오지 않고,
         // 자체 좌표(this.x, this.y)를 보간(lerp)하여 이동합니다.
         this.x = this.parent.x + Math.cos(this.angle) * this.currentDistance;
@@ -82,16 +83,22 @@ class Platform {
     }
 
     draw(ctx) {
-        // 매 프레임 업데이트를 먼저 실행
         this.update();
 
-        ctx.fillStyle = "blue";
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        // 플랫폼의 긴 면이 Nemo를 향하도록 90도 회전
-        ctx.rotate(this.angle + Math.PI / 2);
-        ctx.fillRect(-15, -5, 30, 10);
-        ctx.restore();
+        if (this.type === "move") {
+            // "move" 타입일 경우 기존대로 그리기
+            ctx.fillStyle = "black";
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            // 플랫폼의 긴 면이 Nemo를 향하도록 90도 회전
+            ctx.rotate(this.angle + Math.PI / 2);
+            ctx.fillRect(-15, -5, 30, 10);
+            ctx.restore();
+        } else if (this.type === "attack") {
+            ctx.fillStyle = "black";
+            // "attack" 타입일 경우: 껍데기만 그리기 (현재는 비워둠)
+            // 추후 공격 플랫폼의 로직을 여기에 추가할 예정입니다.
+        }
     }
 }
 

@@ -6,8 +6,8 @@ const ctx = canvas.getContext("2d");
 const keys = { a: false, d: false, w: false, s: false };
 
 // 두 개의 Nemo 객체 생성
-const blueNemo = new Nemo(200, 200, "blue");
-const redNemo = new Nemo(300, 300, "red");
+const blueNemo = new Nemo(200, 200, "blue", ["move", "attack"]);
+const redNemo = new Nemo(300, 300, "red", ["move", "attack"]);
 
 document.addEventListener("keydown", (e) => {
     if (['a', 'd', 'w', 's'].includes(e.key)) keys[e.key] = true;
@@ -26,16 +26,17 @@ function gameLoop() {
 
     if (dx !== 0 || dy !== 0) {
         let inputAngle = Math.atan2(dy, dx);
-        blueNemo.platform.setTargetAngle(inputAngle);
+        // 각 플랫폼에 대해 목표 각도 설정
+        blueNemo.platforms.forEach(platform => platform.setTargetAngle(inputAngle));
     } else {
-        blueNemo.platform.reset();
+        blueNemo.platforms.forEach(platform => platform.reset());
     }
 
-    redNemo.platform.reset();
-    blueNemo.platform.update();
+    redNemo.platforms.forEach(platform => platform.reset());
+    blueNemo.platforms.forEach(platform => platform.update());
     blueNemo.update();
 
-    redNemo.platform.update();
+    redNemo.platforms.forEach(platform => platform.update());
     redNemo.update();
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
