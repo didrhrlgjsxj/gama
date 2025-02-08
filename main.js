@@ -16,6 +16,9 @@ let cameraX = 0;
 let cameraY = 0;
 const cameraSpeed = 5; // 카메라 이동 속도
 
+// 확대/축소(scale) 변수 (기본값 1 = 100%)
+let scale = 1.0;
+
 // 마우스 위치 추적
 let mouseX = 0;
 let mouseY = 0;
@@ -24,6 +27,16 @@ canvas.addEventListener("mousemove", (event) => {
     const rect = canvas.getBoundingClientRect();
     mouseX = event.clientX - rect.left;
     mouseY = event.clientY - rect.top;
+});
+
+// 마우스 휠 이벤트로 카메라 확대/축소 처리
+canvas.addEventListener("wheel", (event) => {
+    event.preventDefault(); // 기본 스크롤 동작 방지
+    const zoomSpeed = 0.001; // 확대/축소 속도 (원하는 값으로 조정)
+    // 휠 위로 돌리면 (deltaY < 0) 확대, 아래면 (deltaY > 0) 축소
+    scale += -event.deltaY * zoomSpeed;
+    // 확대/축소 배율의 최소, 최대 한계값 설정 (예: 0.5배 ~ 3.0배)
+    scale = Math.max(0.5, Math.min(scale, 3.0));
 });
 
 // 카메라 이동 로직 (마우스가 캔버스 가장자리에 있을 때 이동)
@@ -71,8 +84,7 @@ function gameLoop() {
     // 캔버스 클리어
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // 배경 그리기 (월드 좌표에 기반하여 카메라 오프셋 적용)
-    ctx.drawImage(background, -cameraX, -cameraY, backgroundWidth, backgroundHeight);
+    // (기존의 배경 그리기 호출은 제거합니다.)
 
     // Nemo 이동 입력 처리
     let dx = 0, dy = 0;
@@ -99,11 +111,15 @@ function gameLoop() {
     redNemo.platforms.forEach(platform => platform.update());
     redNemo.update();
 
-    // ★ 카메라 변환 적용 ★  
-    // 오브젝트들의 월드 좌표(this.x, this.y)는 그대로 유지되고,  
-    // ctx.translate(-cameraX, -cameraY)를 통해 화면상에 그릴 위치만 변환됩니다.
+    // ★ 카메라 변환 및 확대/축소 적용 ★  
+    // ctx.scale(scale, scale)와 ctx.translate(-cameraX, -cameraY)를 통해
+    // 모든 드로잉 작업(배경, Nemo 등)이 확대/축소 및 카메라 이동의 영향을 받습니다.
     ctx.save();
+    ctx.scale(scale, scale);
     ctx.translate(-cameraX, -cameraY);
+
+    // 배경 그리기 (월드 좌표 기준)
+    ctx.drawImage(background, 0, 0, backgroundWidth, backgroundHeight);
 
     // Nemo 객체들을 배경 위에 그리기
     blueNemo.draw(ctx);
