@@ -1,3 +1,4 @@
+// Nemo.js
 import { MovePlatform, AttackPlatform } from './Platform.js';  // MovePlatform과 AttackPlatform을 가져옵니다.
 
 class Nemo {
@@ -46,41 +47,16 @@ class Nemo {
                 this.vx = Math.cos(platform.angle) * moveSpeed;
                 this.vy = Math.sin(platform.angle) * moveSpeed;
     
-                // 네모의 위치 갱신
+                // 네모의 위치 갱신 (월드 좌표는 그대로 업데이트)
                 this.x += this.vx;
                 this.y += this.vy;
             }
         });
     }
     
-
     draw(ctx) {
         // 부착된 플랫폼 그리기
         this.platforms.forEach(platform => platform.draw(ctx));
-
-        // 빔이 Nemo의 네모에 가려지지 않도록 Nemo를 그리기 전에 빔을 그리도록 순서를 바꿉니다.
-        this.platforms.forEach(platform => {
-            if (platform.type === "move" && platform.mode === "extend" && platform.currentDistance > platform.baseDistance) {
-                ctx.save();
-
-                // 속도에 따라 빛의 두께와 강도 조정
-                let extensionRatio = (platform.currentDistance - platform.baseDistance) / (platform.maxDistance - platform.baseDistance);
-                extensionRatio = Math.max(0, Math.min(1, extensionRatio));
-                let lineWidth = 2 + 8 * extensionRatio;  // 빛의 두께 (2에서 10 사이)
-                let shadowBlur = 10 + 20 * extensionRatio; // 빛의 흐림 정도 (10에서 30 사이)
-
-                // 초록색 빛 효과 (라인 및 그림자 효과)
-                ctx.strokeStyle = "rgba(0, 255, 0, 0.5)"; // 반투명 초록색
-                ctx.lineWidth = lineWidth;
-                ctx.shadowColor = "lime";
-                ctx.shadowBlur = shadowBlur;
-                ctx.beginPath();
-                ctx.moveTo(platform.x, platform.y);  // platform.x와 platform.y 사용
-                ctx.lineTo(this.x, this.y);
-                ctx.stroke();
-                ctx.restore();
-            }
-        });
 
         // Nemo 그리기 (회전은 제외하고 그리기)
         ctx.fillStyle = this.fillColor;

@@ -1,9 +1,11 @@
+// Platform.js
+
 // 기본 Platform 클래스
 class Platform {
     constructor(parent, type = "move") {
         this.parent = parent;
-        this.baseDistance = 5;  // Nemo와의 기본 거리 (원 반지름)
-        this.maxDistance = 10;  // 최대 확장 거리 (이전보다 늘어남)
+        this.baseDistance = 60;  // Nemo와의 기본 거리 (원 반지름)
+        this.maxDistance = 150;  // 최대 확장 거리 (이전보다 늘어남)
         this.currentDistance = this.baseDistance;
         this.angle = 0;          // 초기 각도 (오른쪽)
         this.mode = "idle";      // 모드: "idle", "orbit", "extend"
@@ -84,10 +86,6 @@ class MovePlatform extends Platform {
         // 현재 각도와 거리로 플랫폼의 x, y 좌표를 업데이트
         this.x = this.parent.x + Math.cos(this.angle) * this.currentDistance;
         this.y = this.parent.y + Math.sin(this.angle) * this.currentDistance;
-
-        // MovePlatform이 Nemo를 끌어가는 로직
-        this.parent.x = this.x;  // Nemo의 x 위치를 현재 플랫폼 x 위치로 설정
-        this.parent.y = this.y;  // Nemo의 y 위치를 현재 플랫폼 y 위치로 설정
     }
 
     draw(ctx) {
@@ -101,7 +99,6 @@ class MovePlatform extends Platform {
         ctx.restore();
     }
 }
-
 
 // AttackPlatform은 Platform을 상속받아 공격 관련 로직을 추가합니다.
 class AttackPlatform extends Platform {
