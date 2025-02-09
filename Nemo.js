@@ -1,8 +1,12 @@
 // Nemo.js
-import { MovePlatform, AttackPlatform } from './Platform.js';  // MovePlatform과 AttackPlatform을 가져옵니다.
+import { Platform, MovePlatform, AttackPlatform } from './Platform.js';  // MovePlatform과 AttackPlatform을 가져옵니다.
+import Grid from './Grid.js'; // Grid를 임포트
+import { mainGrid } from './main.js';  // mainGrid를 가져옵니다.
+
 
 class Nemo {
     constructor(x, y, team = "blue", platformTypes = ["move"]) {
+        
         this.x = x;
         this.y = y;
         this.size = 50;
@@ -29,6 +33,9 @@ class Nemo {
             if (type === "move") return new MovePlatform(this);  // 'move' 타입일 경우 MovePlatform
             if (type === "attack") return new AttackPlatform(this);  // 'attack' 타입일 경우 AttackPlatform
         });
+
+        // Grid에 자신을 추가
+        //MainGrid.addEntity(this); // Grid에 해당 Nemo 객체 추가
     }
 
     update() {

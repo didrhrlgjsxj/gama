@@ -13,7 +13,9 @@ background.src = "BackGround.webp"; // 배경 이미지 경로
 const backgroundWidth = 1600; // 배경 너비 (원하는 크기로 설정)
 const backgroundHeight = 1200; // 배경 높이 (원하는 크기로 설정)
 
-const grid = new Grid(100); // 셀 크기를 50으로 설정
+
+const mainGrid = new Grid(200)
+
 
 // 카메라 변수 및 이동 속도
 let cameraX = 0;
@@ -126,7 +128,9 @@ function gameLoop() {
     // 배경 그리기 (월드 좌표 기준)
     ctx.drawImage(background, 0, 0, backgroundWidth, backgroundHeight);
 
-    grid.draw(ctx);  // 그리드 그리기 추가
+    mainGrid.draw(ctx);
+
+
     // Nemo 객체들을 배경 위에 그리기
     blueNemo.draw(ctx);
     redNemo.draw(ctx);
@@ -140,3 +144,6 @@ function gameLoop() {
 background.onload = () => {
     gameLoop();
 };
+
+
+export { mainGrid };

@@ -1,4 +1,5 @@
 // Platform.js
+import { mainGrid } from './main.js';  // mainGrid를 가져옵니다.
 
 class Platform {
     constructor(parent, type = "move") {
