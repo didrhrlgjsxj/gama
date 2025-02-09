@@ -1,5 +1,7 @@
 // main.js
 import Nemo from './Nemo.js';  // Nemo.js에서 Nemo 클래스를 가져옵니다.
+import Grid from './Grid.js';
+
 
 // Canvas 및 Context 설정
 const canvas = document.getElementById("gameCanvas");
@@ -10,6 +12,8 @@ const background = new Image();
 background.src = "BackGround.webp"; // 배경 이미지 경로
 const backgroundWidth = 1600; // 배경 너비 (원하는 크기로 설정)
 const backgroundHeight = 1200; // 배경 높이 (원하는 크기로 설정)
+
+const grid = new Grid(100); // 셀 크기를 50으로 설정
 
 // 카메라 변수 및 이동 속도
 let cameraX = 0;
@@ -84,6 +88,7 @@ function gameLoop() {
     // 캔버스 클리어
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+    
     // (기존의 배경 그리기 호출은 제거합니다.)
 
     // Nemo 이동 입력 처리
@@ -121,6 +126,7 @@ function gameLoop() {
     // 배경 그리기 (월드 좌표 기준)
     ctx.drawImage(background, 0, 0, backgroundWidth, backgroundHeight);
 
+    grid.draw(ctx);  // 그리드 그리기 추가
     // Nemo 객체들을 배경 위에 그리기
     blueNemo.draw(ctx);
     redNemo.draw(ctx);
