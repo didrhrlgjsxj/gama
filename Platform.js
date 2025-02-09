@@ -14,7 +14,7 @@ class Platform {
         // 물리적 속성 추가
         this.speed = 0;          // 현재 속도
         this.maxSpeed = 5;       // 최대 속도
-        this.acceleration = 1; // 가속도
+        this.acceleration = 0.7; // 가속도
         this.deceleration = 0.3; // 감속도
         
         // 플랫폼의 절대 좌표 (Nemo와 독립적)
@@ -38,7 +38,7 @@ class Platform {
         const dx = this.parent.x - this.x;
         const dy = this.parent.y - this.y;
         this.currentDistance = Math.hypot(dx, dy);
-        //const baseAngle = Math.atan2(dy, dx); // Nemo를 향하는 기본 각도
+        const baseAngle = Math.atan2(dy, dx) + Math.PI; //실시간 네모의 이동방향 결정
 
         if (this.mode === "move") {
             // 가속 구간 ==========================================
@@ -77,6 +77,7 @@ class MovePlatform extends Platform {
         super(parent, "move");
         this.width = 30;
         this.height = 10;
+        this.moveMagnitude = 0; // moveVector 크기를 저장할 프로퍼티 추가
     }
 
     update() {
@@ -90,20 +91,41 @@ class MovePlatform extends Platform {
             this.y = this.parent.y + Math.sin(angle) * this.maxDistance;
         }
 
+        // 네모 이동: currentDistance가 기본거리보다 클 경우
         if (this.currentDistance > this.baseDistance) { // 네모 이동
             const moveMagnitude = (this.currentDistance - this.baseDistance) * this.parent.maxSpeed / 50;
+            const pullAngle = Math.atan2(this.y - this.parent.y, this.x - this.parent.x);
             this.parent.moveVector = {
-                x: Math.cos(this.angle) * moveMagnitude,
-                y: Math.sin(this.angle) * moveMagnitude
-            }
+                x: Math.cos(pullAngle) * moveMagnitude,
+                y: Math.sin(pullAngle) * moveMagnitude
+            };
+            this.moveMagnitude = moveMagnitude; // moveMagnitude를 저장 (선 두께 결정에 사용)
         } else {
             this.parent.moveVector = { x: 0, y: 0 };
+            this.moveMagnitude = 0;
         }
         
     }
 
     draw(ctx) {
-        ctx.fillStyle = "black";
+
+        // 빔(선) 그리기: moveMagnitude가 0보다 클 때, Nemo와 플랫폼 사이를 연결
+        if (this.moveMagnitude > 0) {
+            ctx.save();
+            // 연한 초록색(투명도 포함)로 선을 설정
+            ctx.strokeStyle = "rgba(134, 221, 134, 0.75)"; // lightgreen with 50% opacity
+            // 선의 두께는 moveMagnitude에 비례 (필요에 따라 배율 조절)
+
+            ctx.lineWidth = this.moveMagnitude * 3; 
+            ctx.beginPath();
+            ctx.moveTo(this.parent.x, this.parent.y);
+            ctx.lineTo(this.x, this.y);
+            ctx.stroke();
+            ctx.restore();
+        }
+
+
+        ctx.fillStyle = "black"; //플랫폼 그리기
         ctx.save();
         ctx.translate(this.x, this.y);
         const angleToNemo = Math.atan2(
@@ -136,7 +158,7 @@ class AttackPlatform extends Platform {
         ctx.fillStyle = "red";
         ctx.save();
         ctx.translate(this.x, this.y);
-        ctx.rotate(this.angle);  // 공격 방향으로 회전
+        // ctx.rotate(this.angle);  // 공격 방향으로 회전
         ctx.beginPath();
         ctx.moveTo(-15, 0);
         ctx.lineTo(15, 0);
