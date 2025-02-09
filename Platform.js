@@ -7,7 +7,8 @@ class Platform {
         this.maxDistance = 150;  // 최대 확장 거리
         this.currentDistance = this.baseDistance;
         this.angle = 0;          // 현재 각도
-        this.mode = "idle";      // 모드: "idle", "move", "return"
+        this.lastAngle = 0;
+        this.mode = "idle";      // 모드: "idle", "move", "return", "pull"
         this.type = type;
         
         // 물리적 속성 추가
@@ -25,6 +26,7 @@ class Platform {
     setTargetAngle(newAngle) {
         this.angle = newAngle;
         this.mode = "move"; // 이동 모드 활성화
+        this.lastAngle = this.angle;
     }
 
     reset() {
@@ -35,7 +37,7 @@ class Platform {
         // 공통 업데이트 로직
         const dx = this.parent.x - this.x;
         const dy = this.parent.y - this.y;
-        const baseAngle = Math.atan2(dy, dx); // Nemo를 향하는 기본 각도
+        //const baseAngle = Math.atan2(dy, dx); // Nemo를 향하는 기본 각도
 
         if (this.mode === "move") {
             // 가속 구간 ==========================================
@@ -52,8 +54,9 @@ class Platform {
             if (this.speed < 0) this.speed = 0;
 
             // Nemo 주변 기본 위치 계산
-            const targetX = this.parent.x + Math.cos(baseAngle) * this.baseDistance;
-            const targetY = this.parent.y + Math.sin(baseAngle) * this.baseDistance;
+
+            const targetX = this.parent.x + Math.cos(this.lastAngle) * this.baseDistance;
+            const targetY = this.parent.y + Math.sin(this.lastAngle) * this.baseDistance;
 
             // 부드러운 복귀
             this.x += (targetX - this.x) * 0.1;
@@ -85,6 +88,8 @@ class MovePlatform extends Platform {
             this.x = this.parent.x + Math.cos(angle) * this.maxDistance;
             this.y = this.parent.y + Math.sin(angle) * this.maxDistance;
         }
+
+        
     }
 
     draw(ctx) {
@@ -112,8 +117,7 @@ class AttackPlatform extends Platform {
     update() {
         // 공격 관련 로직 (확장 처리 없음)
         // AttackPlatform은 부모의 위치에 따라만 위치를 업데이트
-        this.x = this.parent.x + Math.cos(this.angle) * this.currentDistance;
-        this.y = this.parent.y + Math.sin(this.angle) * this.currentDistance;
+        
     }
 
     draw(ctx) {
