@@ -3,8 +3,8 @@
 class Platform {
     constructor(parent, type = "move") {
         this.parent = parent;
-        this.baseDistance = 100;  // 기본 거리
-        this.maxDistance = 150;  // 최대 확장 거리
+        this.baseDistance = 60;  // 기본 거리
+        this.maxDistance = 120;  // 최대 확장 거리
         this.currentDistance = this.baseDistance;
         this.angle = 0;          // 현재 각도
         this.lastAngle = 0;
@@ -37,6 +37,7 @@ class Platform {
         // 공통 업데이트 로직
         const dx = this.parent.x - this.x;
         const dy = this.parent.y - this.y;
+        this.currentDistance = Math.hypot(dx, dy);
         //const baseAngle = Math.atan2(dy, dx); // Nemo를 향하는 기본 각도
 
         if (this.mode === "move") {
@@ -89,6 +90,16 @@ class MovePlatform extends Platform {
             this.y = this.parent.y + Math.sin(angle) * this.maxDistance;
         }
 
+        if (this.currentDistance > this.baseDistance) { // 네모 이동
+            this.mode = "pull"
+            const moveMagnitude = (this.currentDistance - this.baseDistance) * this.parent.maxSpeed / 5;
+            this.parent.moveVector = {
+                x: Math.cos(this.angle) * moveMagnitude,
+                y: Math.sin(this.angle) * moveMagnitude
+            }
+        } else {
+            this.parent.moveVector = { x: 0, y: 0 };
+        }
         
     }
 

@@ -6,8 +6,10 @@ class Nemo {
         this.x = x;
         this.y = y;
         this.size = 50;
-        this.speed = 3;       // Nemo의 최고 속도 (플랫폼에서 네모를 이동시킬 때 사용됨)
+        this.speed = 0; 
+        this.maxspeed = 3;      // Nemo의 최고 속도 (플랫폼에서 네모를 이동시킬 때 사용됨)
         this.team = team;
+        this.moveVector = 0;
 
         // 팀에 따른 색상 설정: fillColor는 연한 색, borderColor는 진한 색
         if (team === "red") {
@@ -18,9 +20,9 @@ class Nemo {
             this.borderColor = "darkblue";  // 진한 파랑
         }
 
-        // 초기 속도 및 위치 (이제 vx, vy는 사용하지 않습니다.)
-        this.vx = 0;
-        this.vy = 0;
+        // // 초기 속도 및 위치 (이제 vx, vy는 사용하지 않습니다.)
+        // this.vx = 0;
+        // this.vy = 0;
 
         // 플랫폼 타입을 파라미터로 받아서 해당 타입에 맞는 플랫폼을 생성
         this.platforms = platformTypes.map(type => {
@@ -32,6 +34,11 @@ class Nemo {
     update() {
         // 각 플랫폼에 대해 업데이트 (플랫폼 내부에서 네모의 위치를 업데이트합니다)
         this.platforms.forEach(platform => platform.update());
+
+        if (this.moveVector) {
+            this.x += this.moveVector.x;
+            this.y += this.moveVector.y; //무브플랫폼에서 가져옴
+        }
     }
     
     draw(ctx) {
