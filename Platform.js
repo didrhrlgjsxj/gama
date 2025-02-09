@@ -8,14 +8,14 @@ class Platform {
         this.currentDistance = this.baseDistance;
         this.angle = 0;          // 현재 각도
         this.lastAngle = 0;
-        this.mode = "idle";      // 모드: "idle", "move", "return", "pull"
+        this.mode = "idle";      // 모드: "idle", "move", "return"
         this.type = type;
         
         // 물리적 속성 추가
         this.speed = 0;          // 현재 속도
         this.maxSpeed = 5;       // 최대 속도
-        this.acceleration = 0.2; // 가속도
-        this.deceleration = 0.1; // 감속도
+        this.acceleration = 1; // 가속도
+        this.deceleration = 0.3; // 감속도
         
         // 플랫폼의 절대 좌표 (Nemo와 독립적)
         this.x = parent.x + Math.cos(this.angle) * this.baseDistance;
@@ -91,8 +91,7 @@ class MovePlatform extends Platform {
         }
 
         if (this.currentDistance > this.baseDistance) { // 네모 이동
-            this.mode = "pull"
-            const moveMagnitude = (this.currentDistance - this.baseDistance) * this.parent.maxSpeed / 5;
+            const moveMagnitude = (this.currentDistance - this.baseDistance) * this.parent.maxSpeed / 50;
             this.parent.moveVector = {
                 x: Math.cos(this.angle) * moveMagnitude,
                 y: Math.sin(this.angle) * moveMagnitude

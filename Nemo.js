@@ -7,7 +7,7 @@ class Nemo {
         this.y = y;
         this.size = 50;
         this.speed = 0; 
-        this.maxspeed = 3;      // Nemo의 최고 속도 (플랫폼에서 네모를 이동시킬 때 사용됨)
+        this.maxSpeed = 3;      // Nemo의 최고 속도 (플랫폼에서 네모를 이동시킬 때 사용됨)
         this.team = team;
         this.moveVector = 0;
 
