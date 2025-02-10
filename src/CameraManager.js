@@ -2,7 +2,7 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
 const background = new Image();
-background.src = "BackGround.webp"; // 배경 이미지
+background.src = "src/BackGround.webp"; // 배경 이미지
 const backgroundWidth = 1000; // 배경 너비 (더 크게 설정)
 const backgroundHeight = 1000; // 배경 높이 (더 크게 설정)
 

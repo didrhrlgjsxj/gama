@@ -9,7 +9,7 @@ const ctx = canvas.getContext("2d");
 
 // 배경 이미지 설정
 const background = new Image();
-background.src = "BackGround.webp"; // 배경 이미지 경로
+background.src = "src/BackGround.webp"; // 배경 이미지 경로
 const backgroundWidth = 1600; // 배경 너비 (원하는 크기로 설정)
 const backgroundHeight = 1200; // 배경 높이 (원하는 크기로 설정)
 
