@@ -103,7 +103,7 @@ function gameLoop() {
     if (dx !== 0 || dy !== 0) {
         let inputAngle = Math.atan2(dy, dx);
         // blueNemo의 각 플랫폼에 목표 각도 설정
-        blueNemo.platforms.forEach(platform => platform.setTargetAngle(inputAngle));
+        blueNemo.platforms.forEach(platform => platform.keyInputAngle(inputAngle));
     } else {
         blueNemo.platforms.forEach(platform => platform.reset());
     }
@@ -112,11 +112,13 @@ function gameLoop() {
     redNemo.platforms.forEach(platform => platform.reset());
 
     // Nemo 업데이트 (플랫폼 업데이트 및 Nemo 이동)
+    const enemies = [blueNemo, redNemo];
+
     blueNemo.platforms.forEach(platform => platform.update());
-    blueNemo.update();
+    blueNemo.update(enemies);
     
     redNemo.platforms.forEach(platform => platform.update());
-    redNemo.update();
+    redNemo.update(enemies);
 
     // ★ 카메라 변환 및 확대/축소 적용 ★  
     // ctx.scale(scale, scale)와 ctx.translate(-cameraX, -cameraY)를 통해

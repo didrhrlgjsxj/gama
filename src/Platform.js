@@ -9,8 +9,11 @@ class Platform {
         this.currentDistance = this.baseDistance;
         this.angle = 0;          // 현재 각도
         this.lastAngle = 0;
-        this.mode = "idle";      // 모드: "idle", "move", "return"
+        this.targetAngle = 0;
+        this.mode = "idle";      // 모드: "idle", "moveOn", "return", "attackOn" (이동관련)
+        this.mode2 = "idle";         // 모드: "idle", "moveOn", "return", "attackOn" (상태관련)
         this.type = type;
+        this.attackRate = 5; //10초에 x 번
         
         // 물리적 속성 추가
         this.speed = 0;          // 현재 속도
@@ -22,11 +25,12 @@ class Platform {
         this.x = parent.x + Math.cos(this.angle) * this.baseDistance;
         this.y = parent.y + Math.sin(this.angle) * this.baseDistance;
     }
+    
 
     // 입력 방향 설정 (라디안)
-    setTargetAngle(newAngle) {
+    keyInputAngle(newAngle) {
         this.angle = newAngle;
-        this.mode = "move"; // 이동 모드 활성화
+        this.mode = "moveOn"; // 이동 모드 활성화
         this.lastAngle = this.angle;
     }
 
@@ -41,7 +45,7 @@ class Platform {
         this.currentDistance = Math.hypot(dx, dy);
         const baseAngle = Math.atan2(dy, dx) + Math.PI; //실시간 네모의 이동방향 결정
 
-        if (this.mode === "move") {
+        if (this.mode === "moveOn" ||  this.mode2 === "moveOn") {
             // 가속 구간 ==========================================
             this.speed += this.acceleration;
             if (this.speed > this.maxSpeed) this.speed = this.maxSpeed;
@@ -50,7 +54,7 @@ class Platform {
             this.x += Math.cos(this.angle) * this.speed;
             this.y += Math.sin(this.angle) * this.speed;
 
-        } else if (this.mode === "return") {
+        } else if (this.mode === "return" || this.mode2 === "return") {
             // 감속 및 복귀 구간 ==================================
             this.speed -= this.deceleration;
             if (this.speed < 0) this.speed = 0;
@@ -66,6 +70,7 @@ class Platform {
 
             if (Math.hypot(targetX - this.x, targetY - this.y) < 2) {
                 this.mode = "idle"; // 복귀 완료
+                this.mode2 = "idle";
             }
         }
     }
@@ -82,7 +87,7 @@ class MovePlatform extends Platform {
     }
 
     update() {
-        super.update(); // 기본 물리 업데이트
+        super.update(); // 플랫폼 공통 업데이트
 
         // 거리 제한 (Nemo로부터 최대 거리 초과 방지)
         const distance = Math.hypot(this.x - this.parent.x, this.y - this.parent.y);
@@ -139,31 +144,66 @@ class MovePlatform extends Platform {
     }
 }
 
-// AttackPlatform 클래스는 기존 코드 유지
 
 // AttackPlatform은 Platform을 상속받아 공격 관련 로직을 추가합니다.
 class AttackPlatform extends Platform {
     constructor(parent) {
         super(parent, "attack");
+        this.enemyAngle = 0; // 적의 방향 저장
+    }
+
+    // 🛠 사용자의 방향 입력을 무시하도록 변경
+    keyInputAngle(newAngle) {
+        if (!this.parent.nearestEnemy) { // 적이 없을 때만 동작
+            this.angle = newAngle;
+            this.mode = "moveOn";
+            this.lastAngle = this.angle;
+        }
     }
 
     update() {
-        // 공격 관련 로직 (확장 처리 없음)
-        // AttackPlatform은 부모의 위치에 따라만 위치를 업데이트
-        
+        let targetAngle;
+
+        if (this.parent.nearestEnemy) {
+            // 적이 있으면 적 방향으로만 회전
+            const dx = this.parent.nearestEnemy.x - this.parent.x;
+            const dy = this.parent.nearestEnemy.y - this.parent.y;
+            targetAngle = Math.atan2(dy, dx);
+        } else {
+            // 적이 없으면 네모의 방향을 따름
+            targetAngle = this.parent.angle;
+        }
+
+        //  `angleDiff`를 -π ~ π 범위로 정규화
+        let angleDiff = targetAngle - this.angle;
+        angleDiff = ((angleDiff + Math.PI) % (2 * Math.PI)) - Math.PI;
+
+        //  공격 모드 활성화 (±6도 이내면 "attackOn")
+        if (Math.abs(angleDiff) < Math.PI / 30 && this.parent.nearestEnemy) {
+            this.mode2 = "attackOn";
+        } else {
+            this.mode2 = "idle";
+        }
+
+        //  부드러운 회전 (Lerp 적용)
+        this.angle += angleDiff * 0.1;
+
+        //  네모를 중심으로 목표 위치 설정
+        this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance;
+        this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance;
     }
 
     draw(ctx) {
-        super.draw(ctx); // 기본 플랫폼 그리기 (여기서는 아무 처리 없음)
-        // AttackPlatform에 특화된 추가적인 그리기 처리
-        ctx.fillStyle = "red";
+        super.draw(ctx);
+        ctx.fillStyle = this.mode2 == "attackOn" ? "rgb(139, 0, 0)" : "red";
+
         ctx.save();
         ctx.translate(this.x, this.y);
-        // ctx.rotate(this.angle);  // 공격 방향으로 회전
+        ctx.rotate(this.angle);
         ctx.beginPath();
-        ctx.moveTo(-15, 0);
+        ctx.moveTo(-15, 15);
+        ctx.lineTo(-15, -15);
         ctx.lineTo(15, 0);
-        ctx.lineTo(0, -30);  // 삼각형 모양의 공격 플랫폼 그리기
         ctx.closePath();
         ctx.fill();
         ctx.restore();
