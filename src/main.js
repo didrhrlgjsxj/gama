@@ -70,9 +70,12 @@ function updateCamera() {
 // Nemo 관련 코드
 const keys = { a: false, d: false, w: false, s: false };
 
-// 두 개의 Nemo 객체 생성
-const blueNemo = new Nemo(200, 200, "blue", ["move", "attack"]);
-const redNemo = new Nemo(300, 300, "red", ["move", "attack"]);
+// 디버그용: 블루팀은 army와 unit 한 마리씩, 레드팀은 unit 한 마리 생성
+const blueArmyNemo = new Nemo(200, 200, "blue", ["move", "attack"], "army");
+const blueUnitNemo = new Nemo(400, 200, "blue", ["attack"], "unit");
+const redNemo = new Nemo(300, 300, "red", ["attack"], "unit");
+
+const nemos = [blueArmyNemo, blueUnitNemo, redNemo];
 
 document.addEventListener("keydown", (e) => {
     if (['a', 'd', 'w', 's'].includes(e.key)) keys[e.key] = true;
@@ -101,24 +104,15 @@ function gameLoop() {
     if (keys.s) dy += 1;
 
     if (dx !== 0 || dy !== 0) {
-        let inputAngle = Math.atan2(dy, dx);
-        // blueNemo의 각 플랫폼에 목표 각도 설정
-        blueNemo.platforms.forEach(platform => platform.keyInputAngle(inputAngle));
+        const inputAngle = Math.atan2(dy, dx);
+        nemos.forEach(nemo => nemo.handleMoveInput(inputAngle));
     } else {
-        blueNemo.platforms.forEach(platform => platform.reset());
+        nemos.forEach(nemo => nemo.resetMoveInput());
     }
-    
-    // redNemo 플랫폼 리셋
-    redNemo.platforms.forEach(platform => platform.reset());
 
     // Nemo 업데이트 (플랫폼 업데이트 및 Nemo 이동)
-    const enemies = [blueNemo, redNemo];
-
-    blueNemo.platforms.forEach(platform => platform.update());
-    blueNemo.update(enemies);
-    
-    redNemo.platforms.forEach(platform => platform.update());
-    redNemo.update(enemies);
+    const enemies = nemos;
+    nemos.forEach(nemo => nemo.update(enemies));
 
     // ★ 카메라 변환 및 확대/축소 적용 ★  
     // ctx.scale(scale, scale)와 ctx.translate(-cameraX, -cameraY)를 통해
@@ -132,10 +126,8 @@ function gameLoop() {
 
     mainGrid.draw(ctx);
 
-
     // Nemo 객체들을 배경 위에 그리기
-    blueNemo.draw(ctx);
-    redNemo.draw(ctx);
+    nemos.forEach(nemo => nemo.draw(ctx));
 
     ctx.restore();
 
