@@ -18,6 +18,7 @@ class Nemo {
         if (this.unitType === "unit") {
             this.targetAngle = 0;
             this.moving = false;
+            this.reverse = false; // 뒤로 이동 여부
         }
 
         this.hp = 5;   // 기본 HP 설정
@@ -38,25 +39,27 @@ class Nemo {
         });
 
         // unit 타입의 이동 명령 관련 메서드
-        this.setMoveCommand = (angle) => {
+        this.setMoveCommand = (angle, reverse = false) => {
             if (this.unitType === "unit") {
                 this.targetAngle = angle;
                 this.moving = true;
+                this.reverse = reverse;
             }
         };
 
         this.clearMoveCommand = () => {
             if (this.unitType === "unit") {
                 this.moving = false;
+                this.reverse = false;
             }
         };
 
         // 공통 입력 처리 메서드
-        this.handleMoveInput = (angle) => {
+        this.handleMoveInput = (angle, reverse = false) => {
             if (this.unitType === "army") {
                 this.platforms.forEach(p => p.keyInputAngle(angle));
             } else {
-                this.setMoveCommand(angle);
+                this.setMoveCommand(angle, reverse);
             }
         };
 
@@ -99,6 +102,13 @@ class Nemo {
         // 주변의 적을 찾아 nearestEnemy에 저장
         this.nearestEnemy = this.findNearestEnemy(enemies);
 
+        if (this.unitType === "unit" && this.nearestEnemy) {
+            // 적을 향해 바라보도록 목표 각도를 설정
+            const dx = this.nearestEnemy.x - this.x;
+            const dy = this.nearestEnemy.y - this.y;
+            this.targetAngle = Math.atan2(dy, dx);
+        }
+
 
         // 각 플랫폼에 대해 업데이트 (플랫폼 내부에서 네모의 위치를 업데이트합니다)
         this.platforms.forEach(platform => platform.update());
@@ -124,10 +134,12 @@ class Nemo {
                 this.angle += angleDiff * 0.1;
             } else {
                 this.angle = this.targetAngle;
-                if (this.moving) {
-                    this.x += Math.cos(this.angle) * this.maxSpeed;
-                    this.y += Math.sin(this.angle) * this.maxSpeed;
-                }
+            }
+
+            if (this.moving && Math.abs(angleDiff) <= 0.01) {
+                const dir = this.reverse ? -1 : 1;
+                this.x += Math.cos(this.angle) * this.maxSpeed * dir;
+                this.y += Math.sin(this.angle) * this.maxSpeed * dir;
             }
         }
     }

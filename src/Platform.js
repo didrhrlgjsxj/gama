@@ -161,6 +161,25 @@ class AttackPlatform extends Platform {
     }
 
     update() {
+        if (this.parent.unitType === "unit") {
+            // 유닛 타입은 부모의 각도를 그대로 따른다
+            this.angle = this.parent.angle;
+            this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance;
+            this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance;
+
+            if (this.parent.nearestEnemy) {
+                const dx = this.parent.nearestEnemy.x - this.parent.x;
+                const dy = this.parent.nearestEnemy.y - this.parent.y;
+                const enemyAngle = Math.atan2(dy, dx);
+                let diff = enemyAngle - this.angle;
+                diff = ((diff + Math.PI) % (2 * Math.PI)) - Math.PI;
+                this.mode2 = Math.abs(diff) < Math.PI / 30 ? "attackOn" : "idle";
+            } else {
+                this.mode2 = "idle";
+            }
+            return;
+        }
+
         let targetAngle;
 
         if (this.parent.nearestEnemy) {

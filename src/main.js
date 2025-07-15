@@ -68,7 +68,12 @@ function updateCamera() {
 }
 
 // Nemo 관련 코드
-const keys = { a: false, d: false, w: false, s: false };
+const keys = {
+    a: false, d: false, w: false, s: false,
+    ArrowLeft: false, ArrowRight: false,
+    ArrowUp: false, ArrowDown: false,
+    Shift: false
+};
 
 // 디버그용: 블루팀은 army와 unit 한 마리씩, 레드팀은 unit 한 마리 생성
 const blueArmyNemo = new Nemo(200, 200, "blue", ["move", "attack"], "army");
@@ -78,11 +83,11 @@ const redNemo = new Nemo(300, 300, "red", ["attack"], "unit");
 const nemos = [blueArmyNemo, blueUnitNemo, redNemo];
 
 document.addEventListener("keydown", (e) => {
-    if (['a', 'd', 'w', 's'].includes(e.key)) keys[e.key] = true;
+    if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
 });
 
 document.addEventListener("keyup", (e) => {
-    if (['a', 'd', 'w', 's'].includes(e.key)) keys[e.key] = false;
+    if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
 });
 
 // 게임 루프
@@ -98,14 +103,16 @@ function gameLoop() {
 
     // Nemo 이동 입력 처리
     let dx = 0, dy = 0;
-    if (keys.a) dx -= 1;
-    if (keys.d) dx += 1;
-    if (keys.w) dy -= 1;
-    if (keys.s) dy += 1;
+    if (keys.a || keys.ArrowLeft) dx -= 1;
+    if (keys.d || keys.ArrowRight) dx += 1;
+    if (keys.w || keys.ArrowUp) dy -= 1;
+    if (keys.s || keys.ArrowDown) dy += 1;
+
+    const reverse = keys.Shift;
 
     if (dx !== 0 || dy !== 0) {
         const inputAngle = Math.atan2(dy, dx);
-        nemos.forEach(nemo => nemo.handleMoveInput(inputAngle));
+        nemos.forEach(nemo => nemo.handleMoveInput(inputAngle, reverse));
     } else {
         nemos.forEach(nemo => nemo.resetMoveInput());
     }
