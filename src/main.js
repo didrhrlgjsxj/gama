@@ -111,13 +111,10 @@ function gameLoop() {
     // redNemo 플랫폼 리셋
     redNemo.platforms.forEach(platform => platform.reset());
 
-    // Nemo 업데이트 (플랫폼 업데이트 및 Nemo 이동)
+    // Nemo 업데이트 (각 네모가 내부적으로 플랫폼을 업데이트합니다)
     const enemies = [blueNemo, redNemo];
 
-    blueNemo.platforms.forEach(platform => platform.update());
     blueNemo.update(enemies);
-    
-    redNemo.platforms.forEach(platform => platform.update());
     redNemo.update(enemies);
 
     // ★ 카메라 변환 및 확대/축소 적용 ★  
