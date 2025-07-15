@@ -3,7 +3,7 @@ import Grid from './Grid.js'; // Grid를 임포트
 import { mainGrid } from './main.js';  // mainGrid를 가져옵니다.
 
 class Nemo {
-    constructor(x, y, team = "blue", platformTypes = ["move"]) {
+    constructor(x, y, team = "blue", platformTypes = ["move"], unitType = "army") {
         this.x = x;
         this.y = y;
         this.angle = 0;          // 현재 각도
@@ -12,6 +12,13 @@ class Nemo {
         this.maxSpeed = 3;      // Nemo의 최고 속도
         this.team = team;
         this.moveVector = 0;
+        this.unitType = unitType;
+
+        // unit 타입일 경우 회전 및 이동을 직접 제어하기 위한 프로퍼티
+        if (this.unitType === "unit") {
+            this.targetAngle = 0;
+            this.moving = false;
+        }
 
         this.hp = 5;   // 기본 HP 설정
 
@@ -26,9 +33,40 @@ class Nemo {
 
         // 플랫폼 타입을 파라미터로 받아서 해당 타입에 맞는 플랫폼을 생성
         this.platforms = platformTypes.map(type => {
-            if (type === "move") return new MovePlatform(this);  
-            if (type === "attack") return new AttackPlatform(this);  
+            if (type === "move") return new MovePlatform(this);
+            if (type === "attack") return new AttackPlatform(this);
         });
+
+        // unit 타입의 이동 명령 관련 메서드
+        this.setMoveCommand = (angle) => {
+            if (this.unitType === "unit") {
+                this.targetAngle = angle;
+                this.moving = true;
+            }
+        };
+
+        this.clearMoveCommand = () => {
+            if (this.unitType === "unit") {
+                this.moving = false;
+            }
+        };
+
+        // 공통 입력 처리 메서드
+        this.handleMoveInput = (angle) => {
+            if (this.unitType === "army") {
+                this.platforms.forEach(p => p.keyInputAngle(angle));
+            } else {
+                this.setMoveCommand(angle);
+            }
+        };
+
+        this.resetMoveInput = () => {
+            if (this.unitType === "army") {
+                this.platforms.forEach(p => p.reset());
+            } else {
+                this.clearMoveCommand();
+            }
+        };
 
         // 자신을 그리드에 추가할 수 있다면 그리드에 추가
         //MainGrid.addEntity(this); 
@@ -71,10 +109,26 @@ class Nemo {
             this.destroyed(); // HP가 0이 되면 네모가 죽는다
         }
 
-        // 네모의 이동 벡터 업데이트
-        if (this.moveVector) {
-            this.x += this.moveVector.x;
-            this.y += this.moveVector.y; // MovePlatform에서 가져옴
+        if (this.unitType === "army") {
+            // 네모의 이동 벡터 업데이트 (MovePlatform에서 계산)
+            if (this.moveVector) {
+                this.x += this.moveVector.x;
+                this.y += this.moveVector.y;
+            }
+        } else if (this.unitType === "unit") {
+            // unit 타입은 직접 회전하고 이동한다
+            let angleDiff = this.targetAngle - this.angle;
+            angleDiff = ((angleDiff + Math.PI) % (2 * Math.PI)) - Math.PI;
+
+            if (Math.abs(angleDiff) > 0.01) {
+                this.angle += angleDiff * 0.1;
+            } else {
+                this.angle = this.targetAngle;
+                if (this.moving) {
+                    this.x += Math.cos(this.angle) * this.maxSpeed;
+                    this.y += Math.sin(this.angle) * this.maxSpeed;
+                }
+            }
         }
     }
 
@@ -97,12 +151,18 @@ class Nemo {
             ctx.stroke();
         }
 
-        // Nemo 그리기 (회전은 제외하고 그리기)
+        // Nemo 그리기
         ctx.fillStyle = this.fillColor;
         ctx.strokeStyle = this.borderColor;
         ctx.lineWidth = 3;
-        ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
-        ctx.strokeRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        if (this.unitType === "unit") {
+            ctx.rotate(this.angle + Math.PI / 2);
+        }
+        ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.strokeRect(-this.size / 2, -this.size / 2, this.size, this.size);
+        ctx.restore();
     }
 }
 

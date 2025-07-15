@@ -152,9 +152,8 @@ class AttackPlatform extends Platform {
         this.enemyAngle = 0; // 적의 방향 저장
     }
 
-    // 🛠 사용자의 방향 입력을 무시하도록 변경
     keyInputAngle(newAngle) {
-        if (!this.parent.nearestEnemy) { // 적이 없을 때만 동작
+        if (!this.parent.nearestEnemy) {
             this.angle = newAngle;
             this.mode = "moveOn";
             this.lastAngle = this.angle;
@@ -170,25 +169,26 @@ class AttackPlatform extends Platform {
             const dy = this.parent.nearestEnemy.y - this.parent.y;
             targetAngle = Math.atan2(dy, dx);
         } else {
-            // 적이 없으면 네모의 방향을 따름
-            targetAngle = this.parent.angle;
+            // 적이 없으면 네모의 현재 angle을 그대로 따라감
+            this.angle = this.parent.angle; // 즉시 갱신
+            this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance;
+            this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance;
+            this.mode2 = "idle";
+            return; // 조기 종료 (아래 회전 로직 생략)
         }
 
-        //  `angleDiff`를 -π ~ π 범위로 정규화
+        // 적이 있을 경우에만 회전 로직 실행
         let angleDiff = targetAngle - this.angle;
-        angleDiff = ((angleDiff + Math.PI) % (2 * Math.PI)) - Math.PI;
+        angleDiff = ((angleDiff + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
 
-        //  공격 모드 활성화 (±6도 이내면 "attackOn")
-        if (Math.abs(angleDiff) < Math.PI / 30 && this.parent.nearestEnemy) {
+        if (Math.abs(angleDiff) < Math.PI / 30) {
             this.mode2 = "attackOn";
         } else {
             this.mode2 = "idle";
         }
 
-        //  부드러운 회전 (Lerp 적용)
         this.angle += angleDiff * 0.1;
 
-        //  네모를 중심으로 목표 위치 설정
         this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance;
         this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance;
     }
