@@ -1,5 +1,6 @@
 // Platform.js
 import { mainGrid } from './main.js';  // mainGrid를 가져옵니다.
+import Bullet from './Bullet.js';
 
 class Platform {
     constructor(parent, type = "move") {
@@ -150,6 +151,21 @@ class AttackPlatform extends Platform {
     constructor(parent) {
         super(parent, "attack");
         this.enemyAngle = 0; // 적의 방향 저장
+
+        // 공격 관련 설정
+        this.attackSpeed = 1;    // 초당 발사 수
+        this.attackRange = 800;  // 사정거리
+        this.attackPower = 1;    // 공격력
+        this.bulletSpeed = 30;
+        this.lastShot = 0;
+        this.bullets = [];
+
+        // 팀에 따른 이미지 로드
+        const prefix = this.parent.team === 'red' ? 'Red' : 'Blue';
+        this.inImage = new Image();
+        this.outImage = new Image();
+        this.inImage.src = `images/${prefix}_in_gun.png`;
+        this.outImage.src = `images/${prefix}_out_gun.png`;
     }
 
     keyInputAngle(newAngle) {
@@ -161,6 +177,9 @@ class AttackPlatform extends Platform {
     }
 
     update() {
+        // 공통 위치 업데이트
+        super.update();
+
         if (this.parent.unitType === "unit") {
             // 유닛 타입은 부모의 각도를 그대로 따른다
             this.angle = this.parent.angle;
@@ -177,7 +196,7 @@ class AttackPlatform extends Platform {
             } else {
                 this.mode2 = "idle";
             }
-            return;
+            // 이후 로직 진행 가능
         }
 
         let targetAngle;
@@ -210,22 +229,53 @@ class AttackPlatform extends Platform {
 
         this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance;
         this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance;
+
+        // 공격 처리: 사정거리 내 적이 있고 조준이 완료되었을 때 총알 발사
+        if (this.parent.nearestEnemy && this.mode2 === 'attackOn') {
+            const now = Date.now();
+            const dx = this.parent.nearestEnemy.x - this.x;
+            const dy = this.parent.nearestEnemy.y - this.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist <= this.attackRange && (now - this.lastShot) >= 1000 / this.attackSpeed) {
+                this.bullets.push(new Bullet(this.x, this.y, this.angle, this.bulletSpeed, this.attackRange));
+                this.lastShot = now;
+            }
+        }
+
+        // 총알 업데이트 및 충돌 처리
+        this.bullets = this.bullets.filter(bullet => {
+            bullet.update();
+            // 적 충돌 검사
+            for (const enemy of this.parent.allEnemies || []) {
+                if (enemy.team !== this.parent.team) {
+                    const dx = bullet.x - enemy.x;
+                    const dy = bullet.y - enemy.y;
+                    if (Math.hypot(dx, dy) < enemy.size / 2) {
+                        enemy.hp -= this.attackPower;
+                        return false;
+                    }
+                }
+            }
+            return bullet.traveled < bullet.range;
+        });
     }
 
     draw(ctx) {
         super.draw(ctx);
-        ctx.fillStyle = this.mode2 == "attackOn" ? "rgb(139, 0, 0)" : "red";
 
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
-        ctx.beginPath();
-        ctx.moveTo(-15, 15);
-        ctx.lineTo(-15, -15);
-        ctx.lineTo(15, 0);
-        ctx.closePath();
-        ctx.fill();
+        if (this.outImage.complete) {
+            ctx.drawImage(this.outImage, -this.outImage.width / 2, -this.outImage.height / 2);
+        }
+        if (this.inImage.complete) {
+            ctx.drawImage(this.inImage, -this.inImage.width / 2, -this.inImage.height / 2);
+        }
         ctx.restore();
+
+        // 총알 그리기
+        this.bullets.forEach(b => b.draw(ctx));
     }
 }
 

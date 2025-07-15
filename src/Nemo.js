@@ -13,6 +13,7 @@ class Nemo {
         this.team = team;
         this.moveVector = 0;
         this.unitType = unitType;
+        this.hp = 10;
 
         // unit 타입일 경우 회전 및 이동을 직접 제어하기 위한 프로퍼티
         if (this.unitType === "unit") {
@@ -20,8 +21,6 @@ class Nemo {
             this.moving = false;
             this.reverse = false; // 뒤로 이동 여부
         }
-
-        this.hp = 5;   // 기본 HP 설정
 
         // 팀에 따른 색상 설정: fillColor는 연한 색, borderColor는 진한 색
         if (team === "red") {
@@ -98,6 +97,9 @@ class Nemo {
 
     // 적과의 거리나 HP를 기준으로 상태를 업데이트
     update(enemies) {
+
+        // 현재 시점의 모든 적 목록 저장 (AttackPlatform 등에서 사용)
+        this.allEnemies = enemies;
 
         // 주변의 적을 찾아 nearestEnemy에 저장
         this.nearestEnemy = this.findNearestEnemy(enemies);

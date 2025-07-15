@@ -77,11 +77,11 @@ const keys = {
 
 // 디버그용: 블루팀은 army와 unit 한 마리씩, 레드팀은 unit 한 마리 생성
 const blueArmyNemo = new Nemo(200, 200, "blue", ["move", "attack"], "army");
-const blueUnitNemo = new Nemo(400, 200, "blue", ["attack"], "unit");
+//const blueUnitNemo = new Nemo(400, 200, "blue", ["attack"], "unit");
 const redNemo = new Nemo(300, 300, "red", ["attack"], "unit");
 
-const nemos = [blueArmyNemo, blueUnitNemo, redNemo];
-
+const nemos = [blueArmyNemo, redNemo];
+//blueUnitNemo
 document.addEventListener("keydown", (e) => {
     if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
 });
