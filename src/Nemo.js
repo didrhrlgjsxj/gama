@@ -8,12 +8,13 @@ class Nemo {
         this.y = y;
         this.angle = 0;          // 현재 각도
         this.size = 50;
-        this.speed = 0; 
+        this.speed = 0;
         this.maxSpeed = 3;      // Nemo의 최고 속도
         this.team = team;
         this.moveVector = 0;
         this.unitType = unitType;
         this.hp = 10;
+        this.dead = false;      // 사망 여부
 
         // unit 타입일 경우 회전 및 이동을 직접 제어하기 위한 프로퍼티
         if (this.unitType === "unit") {
@@ -117,7 +118,7 @@ class Nemo {
 
     
 
-        if (this.hp <= 0) {
+        if (this.hp <= 0 && !this.dead) {
             this.destroyed(); // HP가 0이 되면 네모가 죽는다
         }
 
@@ -149,7 +150,8 @@ class Nemo {
     // 네모가 죽을 때 호출되는 함수
     destroyed() {
         console.log(`${this.team} 팀의 네모가 사망했습니다!`);
-        // 여기에 네모가 죽었을 때의 추가적인 처리(삭제 등)를 추가할 수 있습니다.
+        this.dead = true; // 사망 플래그 설정
+        // 필요한 경우 추가적인 정리 작업을 여기서 수행할 수 있습니다.
     }
     
     draw(ctx) {

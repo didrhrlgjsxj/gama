@@ -6,6 +6,8 @@ import Grid from './Grid.js';
 // Canvas 및 Context 설정
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+const unitBtn = document.getElementById("spawnUnitBtn");
+const armyBtn = document.getElementById("spawnArmyBtn");
 
 // 배경 이미지 설정
 const background = new Image();
@@ -75,12 +77,17 @@ const keys = {
     Shift: false
 };
 
-// 디버그용: 블루팀은 army와 unit 한 마리씩, 레드팀은 unit 한 마리 생성
-const blueArmyNemo = new Nemo(200, 200, "blue", ["move", "attack"], "army");
-//const blueUnitNemo = new Nemo(400, 200, "blue", ["attack"], "unit");
-const redNemo = new Nemo(300, 300, "red", ["attack"], "unit");
+// 임시 배치용 네모
+let ghostNemo = null;
 
-const nemos = [blueArmyNemo, redNemo];
+// 초기 네모들 생성
+const blueArmyNemo = new Nemo(200, 200, "blue", ["move", "attack"], "army");
+const nemos = [blueArmyNemo];
+
+// 레드팀 유닛 5기 배치
+for (let i = 0; i < 5; i++) {
+    nemos.push(new Nemo(300 + i * 60, 300, "red", ["attack"], "unit"));
+}
 //blueUnitNemo
 document.addEventListener("keydown", (e) => {
     if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
@@ -88,6 +95,29 @@ document.addEventListener("keydown", (e) => {
 
 document.addEventListener("keyup", (e) => {
     if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
+});
+
+function worldMouse() {
+    return {
+        x: cameraX + mouseX / scale,
+        y: cameraY + mouseY / scale
+    };
+}
+
+function createGhost(type) {
+    const { x, y } = worldMouse();
+    const platformTypes = type === "army" ? ["move", "attack"] : ["attack"];
+    ghostNemo = new Nemo(x, y, "blue", platformTypes, type);
+}
+
+unitBtn.addEventListener("click", () => createGhost("unit"));
+armyBtn.addEventListener("click", () => createGhost("army"));
+
+canvas.addEventListener("mousedown", (e) => {
+    if (e.button === 0 && ghostNemo) {
+        nemos.push(ghostNemo);
+        ghostNemo = null;
+    }
 });
 
 // 게임 루프
@@ -121,6 +151,24 @@ function gameLoop() {
     const enemies = nemos;
     nemos.forEach(nemo => nemo.update(enemies));
 
+    // 사망한 네모 제거
+    for (let i = nemos.length - 1; i >= 0; i--) {
+        if (nemos[i].dead) {
+            nemos.splice(i, 1);
+        }
+    }
+
+    // 고스트 네모 위치 갱신
+    if (ghostNemo) {
+        const { x, y } = worldMouse();
+        ghostNemo.x = x;
+        ghostNemo.y = y;
+        ghostNemo.platforms.forEach(p => {
+            p.x = ghostNemo.x + Math.cos(p.angle) * p.baseDistance;
+            p.y = ghostNemo.y + Math.sin(p.angle) * p.baseDistance;
+        });
+    }
+
     // ★ 카메라 변환 및 확대/축소 적용 ★  
     // ctx.scale(scale, scale)와 ctx.translate(-cameraX, -cameraY)를 통해
     // 모든 드로잉 작업(배경, Nemo 등)이 확대/축소 및 카메라 이동의 영향을 받습니다.
@@ -135,6 +183,7 @@ function gameLoop() {
 
     // Nemo 객체들을 배경 위에 그리기
     nemos.forEach(nemo => nemo.draw(ctx));
+    if (ghostNemo) ghostNemo.draw(ctx);
 
     ctx.restore();
 
