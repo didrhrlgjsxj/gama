@@ -160,6 +160,12 @@ class AttackPlatform extends Platform {
         this.lastShot = 0;
         this.bullets = [];
 
+        // 유닛 무기의 기본 위치를 네모 중심 기준 오른쪽으로 살짝 이동
+        this.rightOffset = (this.parent.size / 10) * 3;
+
+        // 발사 반동 효과를 위한 오프셋 값
+        this.recoilOffset = 0;
+
         // 팀에 따른 이미지 로드
         const prefix = this.parent.team === 'red' ? 'Red' : 'Blue';
         this.inImage = new Image();
@@ -183,8 +189,10 @@ class AttackPlatform extends Platform {
         if (this.parent.unitType === "unit") {
             // 유닛 타입은 부모의 각도를 그대로 따른다
             this.angle = this.parent.angle;
-            this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance;
-            this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance;
+            this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
+                + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
+            this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
+                + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
 
             if (this.parent.nearestEnemy) {
                 const dx = this.parent.nearestEnemy.x - this.parent.x;
@@ -209,8 +217,10 @@ class AttackPlatform extends Platform {
         } else {
             // 적이 없으면 네모의 현재 angle을 그대로 따라감
             this.angle = this.parent.angle; // 즉시 갱신
-            this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance;
-            this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance;
+            this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
+                + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
+            this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
+                + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
             this.mode2 = "idle";
             return; // 조기 종료 (아래 회전 로직 생략)
         }
@@ -227,8 +237,10 @@ class AttackPlatform extends Platform {
 
         this.angle += angleDiff * 0.1;
 
-        this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance;
-        this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance;
+        this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
+            + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
+        this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
+            + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
 
         // 공격 처리: 사정거리 내 적이 있고 조준이 완료되었을 때 총알 발사
         if (this.parent.nearestEnemy && this.mode2 === 'attackOn') {
@@ -239,6 +251,8 @@ class AttackPlatform extends Platform {
             if (dist <= this.attackRange && (now - this.lastShot) >= 1000 / this.attackSpeed) {
                 this.bullets.push(new Bullet(this.x, this.y, this.angle, this.bulletSpeed, this.attackRange));
                 this.lastShot = now;
+                // 발사 시 총구가 뒤로 밀리는 효과
+                this.recoilOffset = -10;
             }
         }
 
@@ -258,6 +272,12 @@ class AttackPlatform extends Platform {
             }
             return bullet.traveled < bullet.range;
         });
+
+        // 반동으로 밀린 총구가 원위치하도록 회복
+        if (this.recoilOffset < 0) {
+            this.recoilOffset += this.attackSpeed;
+            if (this.recoilOffset > 0) this.recoilOffset = 0;
+        }
     }
 
     draw(ctx) {
@@ -270,7 +290,7 @@ class AttackPlatform extends Platform {
             ctx.drawImage(this.outImage, -this.outImage.width / 2, -this.outImage.height / 2);
         }
         if (this.inImage.complete) {
-            ctx.drawImage(this.inImage, -this.inImage.width / 2, -this.inImage.height / 2);
+            ctx.drawImage(this.inImage, -this.inImage.width / 2 + this.recoilOffset, -this.inImage.height / 2);
         }
         ctx.restore();
 
