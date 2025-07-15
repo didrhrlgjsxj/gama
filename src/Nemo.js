@@ -15,6 +15,8 @@ class Nemo {
         this.unitType = unitType;
         this.hp = 10;
         this.dead = false;      // 사망 여부
+        this.selected = false;  // 선택 여부
+        this.destination = null; // 이동 목표 위치
 
         // unit 타입일 경우 회전 및 이동을 직접 제어하기 위한 프로퍼티
         if (this.unitType === "unit") {
@@ -71,6 +73,10 @@ class Nemo {
             }
         };
 
+        this.setDestination = (x, y) => {
+            this.destination = { x, y };
+        };
+
         // 자신을 그리드에 추가할 수 있다면 그리드에 추가
         //MainGrid.addEntity(this); 
     }
@@ -110,6 +116,22 @@ class Nemo {
             const dx = this.nearestEnemy.x - this.x;
             const dy = this.nearestEnemy.y - this.y;
             this.targetAngle = Math.atan2(dy, dx);
+        }
+
+        if (this.destination) {
+            const dx = this.destination.x - this.x;
+            const dy = this.destination.y - this.y;
+            const dist = Math.hypot(dx, dy);
+            const ang = Math.atan2(dy, dx);
+            this.angle = ang;
+            if (dist > this.maxSpeed) {
+                this.x += Math.cos(ang) * this.maxSpeed;
+                this.y += Math.sin(ang) * this.maxSpeed;
+            } else {
+                this.x = this.destination.x;
+                this.y = this.destination.y;
+                this.destination = null;
+            }
         }
 
 
@@ -172,6 +194,10 @@ class Nemo {
         ctx.strokeStyle = this.borderColor;
         ctx.lineWidth = 3;
         ctx.save();
+        if (this.selected) {
+            ctx.shadowColor = this.borderColor;
+            ctx.shadowBlur = 10;
+        }
         ctx.translate(this.x, this.y);
         if (this.unitType === "unit") {
             ctx.rotate(this.angle + Math.PI / 2);

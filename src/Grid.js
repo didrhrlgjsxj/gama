@@ -9,7 +9,7 @@ class Grid {
 
     draw(ctx) {
         ctx.save();
-        ctx.strokeStyle = "red"; // 빨간색 선 설정
+        ctx.strokeStyle = "green"; // 초록색 선 설정
         ctx.lineWidth = 1;
 
         // 가로선 그리기

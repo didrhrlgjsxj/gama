@@ -70,12 +70,6 @@ function updateCamera() {
 }
 
 // Nemo 관련 코드
-const keys = {
-    a: false, d: false, w: false, s: false,
-    ArrowLeft: false, ArrowRight: false,
-    ArrowUp: false, ArrowDown: false,
-    Shift: false
-};
 
 // 임시 배치용 네모
 let ghostNemo = null;
@@ -88,14 +82,11 @@ const nemos = [blueArmyNemo];
 for (let i = 0; i < 5; i++) {
     nemos.push(new Nemo(300 + i * 60, 300, "red", ["attack"], "unit"));
 }
+let selectedNemos = [];
+let isSelecting = false;
+let selectionStart = null;
+let selectionRect = null;
 //blueUnitNemo
-document.addEventListener("keydown", (e) => {
-    if (keys.hasOwnProperty(e.key)) keys[e.key] = true;
-});
-
-document.addEventListener("keyup", (e) => {
-    if (keys.hasOwnProperty(e.key)) keys[e.key] = false;
-});
 
 function worldMouse() {
     return {
@@ -114,9 +105,54 @@ unitBtn.addEventListener("click", () => createGhost("unit"));
 armyBtn.addEventListener("click", () => createGhost("army"));
 
 canvas.addEventListener("mousedown", (e) => {
-    if (e.button === 0 && ghostNemo) {
-        nemos.push(ghostNemo);
-        ghostNemo = null;
+    const pos = worldMouse();
+    if (e.button === 0) {
+        if (ghostNemo) {
+            nemos.push(ghostNemo);
+            ghostNemo = null;
+        } else {
+            isSelecting = true;
+            selectionStart = pos;
+            selectionRect = { x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y };
+            selectedNemos.forEach(n => n.selected = false);
+            selectedNemos = [];
+        }
+    }
+});
+
+canvas.addEventListener("mousemove", (e) => {
+    if (isSelecting && selectionRect) {
+        const pos = worldMouse();
+        selectionRect.x2 = pos.x;
+        selectionRect.y2 = pos.y;
+    }
+});
+
+canvas.addEventListener("mouseup", (e) => {
+    if (isSelecting && e.button === 0) {
+        isSelecting = false;
+        const pos = worldMouse();
+        selectionRect.x2 = pos.x;
+        selectionRect.y2 = pos.y;
+        const minX = Math.min(selectionRect.x1, selectionRect.x2);
+        const maxX = Math.max(selectionRect.x1, selectionRect.x2);
+        const minY = Math.min(selectionRect.y1, selectionRect.y2);
+        const maxY = Math.max(selectionRect.y1, selectionRect.y2);
+        nemos.forEach(nemo => {
+            if (nemo.x >= minX && nemo.x <= maxX && nemo.y >= minY && nemo.y <= maxY) {
+                nemo.selected = true;
+                selectedNemos.push(nemo);
+            }
+        });
+        selectionRect = null;
+    }
+});
+
+canvas.addEventListener("contextmenu", (e) => {
+    e.preventDefault();
+    if (selectedNemos.length > 0) {
+        const pos = worldMouse();
+        selectedNemos.forEach(n => n.setDestination(pos.x, pos.y));
     }
 });
 
@@ -131,21 +167,6 @@ function gameLoop() {
     
     // (기존의 배경 그리기 호출은 제거합니다.)
 
-    // Nemo 이동 입력 처리
-    let dx = 0, dy = 0;
-    if (keys.a || keys.ArrowLeft) dx -= 1;
-    if (keys.d || keys.ArrowRight) dx += 1;
-    if (keys.w || keys.ArrowUp) dy -= 1;
-    if (keys.s || keys.ArrowDown) dy += 1;
-
-    const reverse = keys.Shift;
-
-    if (dx !== 0 || dy !== 0) {
-        const inputAngle = Math.atan2(dy, dx);
-        nemos.forEach(nemo => nemo.handleMoveInput(inputAngle, reverse));
-    } else {
-        nemos.forEach(nemo => nemo.resetMoveInput());
-    }
 
     // Nemo 업데이트 (플랫폼 업데이트 및 Nemo 이동)
     const enemies = nemos;
@@ -184,6 +205,15 @@ function gameLoop() {
     // Nemo 객체들을 배경 위에 그리기
     nemos.forEach(nemo => nemo.draw(ctx));
     if (ghostNemo) ghostNemo.draw(ctx);
+    if (selectionRect) {
+        ctx.strokeStyle = 'rgba(0,255,0,0.5)';
+        ctx.lineWidth = 1;
+        const x = Math.min(selectionRect.x1, selectionRect.x2);
+        const y = Math.min(selectionRect.y1, selectionRect.y2);
+        const w = Math.abs(selectionRect.x2 - selectionRect.x1);
+        const h = Math.abs(selectionRect.y2 - selectionRect.y1);
+        ctx.strokeRect(x, y, w, h);
+    }
 
     ctx.restore();
 
