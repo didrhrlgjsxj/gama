@@ -3,7 +3,9 @@ import Grid from './Grid.js'; // Grid를 임포트
 import { mainGrid } from './main.js';  // mainGrid를 가져옵니다.
 
 class Nemo {
+    static nextId = 1;
     constructor(x, y, team = "blue", platformTypes = ["move"], unitType = "army") {
+        this.id = Nemo.nextId++;
         this.x = x;
         this.y = y;
         this.angle = 0;          // 현재 각도
@@ -201,9 +203,14 @@ class Nemo {
         ctx.translate(this.x, this.y);
         if (this.unitType === "unit") {
             ctx.rotate(this.angle + Math.PI / 2);
+            ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
+            ctx.strokeRect(-this.size / 2, -this.size / 2, this.size, this.size);
+        } else {
+            ctx.beginPath();
+            ctx.arc(0, 0, this.size / 2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
         }
-        ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
-        ctx.strokeRect(-this.size / 2, -this.size / 2, this.size, this.size);
         ctx.restore();
     }
 }

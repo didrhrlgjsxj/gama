@@ -66,6 +66,7 @@ class NemoSquadManager {
 
     // Build squads from given nemos array
     updateSquads(nemos) {
+        const oldSquads = this.squads;
         this.squads = [];
         const visited = new Set();
         for (const nemo of nemos) {
@@ -87,6 +88,9 @@ class NemoSquadManager {
                 }
             }
             const squad = new NemoSquad(squadNemos, nemo.team, this.cellSize);
+            squad.idString = squad.nemos.map(n => n.id).sort((a,b) => a-b).join(',');
+            const old = oldSquads.find(s => s.idString === squad.idString);
+            if (old) squad.selected = old.selected;
             // enforce max group size
             while (squad.bounds.w > this.maxGroup || squad.bounds.h > this.maxGroup) {
                 // remove farthest nemo until size fits
@@ -100,9 +104,16 @@ class NemoSquadManager {
                 });
                 const removed = squad.nemos.splice(farIndex, 1);
                 squad.updateBounds();
-                this.squads.push(new NemoSquad(removed, nemo.team, this.cellSize));
+                const extra = new NemoSquad(removed, nemo.team, this.cellSize);
+                extra.idString = extra.nemos.map(n => n.id).sort((a,b) => a-b).join(',');
+                const oldExtra = oldSquads.find(s => s.idString === extra.idString);
+                if (oldExtra) extra.selected = oldExtra.selected;
+                this.squads.push(extra);
             }
             squad.updateBounds();
+            squad.idString = squad.nemos.map(n => n.id).sort((a,b) => a-b).join(',');
+            const existing = oldSquads.find(s => s.idString === squad.idString);
+            if (existing) squad.selected = existing.selected;
             this.squads.push(squad);
         }
     }

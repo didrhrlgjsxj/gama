@@ -7,8 +7,10 @@ import { NemoSquadManager } from './NemoSquadManager.js';
 // Canvas 및 Context 설정
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
-const unitBtn = document.getElementById("spawnUnitBtn");
-const armyBtn = document.getElementById("spawnArmyBtn");
+const blueUnitBtn = document.getElementById("spawnBlueUnitBtn");
+const blueArmyBtn = document.getElementById("spawnBlueArmyBtn");
+const redUnitBtn = document.getElementById("spawnRedUnitBtn");
+const redArmyBtn = document.getElementById("spawnRedArmyBtn");
 
 // 배경 이미지 설정
 const background = new Image();
@@ -77,16 +79,10 @@ function updateCamera() {
 // 임시 배치용 네모
 let ghostNemo = null;
 
-// 초기 네모들 생성
-const blueArmyNemo = new Nemo(200, 200, "blue", ["move", "attack"], "army");
-const nemos = [blueArmyNemo];
-
-// 레드팀 유닛 5기 배치
-for (let i = 0; i < 5; i++) {
-    nemos.push(new Nemo(300 + i * 60, 300, "red", ["attack"], "unit"));
-}
+const nemos = [];
 squadManager.updateSquads(nemos);
 let selectedNemos = [];
+let selectedSquads = [];
 let isSelecting = false;
 let selectionStart = null;
 let selectionRect = null;
@@ -99,14 +95,16 @@ function worldMouse() {
     };
 }
 
-function createGhost(type) {
+function createGhost(type, team) {
     const { x, y } = worldMouse();
     const platformTypes = type === "army" ? ["move", "attack"] : ["attack"];
-    ghostNemo = new Nemo(x, y, "blue", platformTypes, type);
+    ghostNemo = new Nemo(x, y, team, platformTypes, type);
 }
 
-unitBtn.addEventListener("click", () => createGhost("unit"));
-armyBtn.addEventListener("click", () => createGhost("army"));
+blueUnitBtn.addEventListener("click", () => createGhost("unit", "blue"));
+blueArmyBtn.addEventListener("click", () => createGhost("army", "blue"));
+redUnitBtn.addEventListener("click", () => createGhost("unit", "red"));
+redArmyBtn.addEventListener("click", () => createGhost("army", "red"));
 
 canvas.addEventListener("mousedown", (e) => {
     const pos = worldMouse();
@@ -120,7 +118,9 @@ canvas.addEventListener("mousedown", (e) => {
             selectionStart = pos;
             selectionRect = { x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y };
             selectedNemos.forEach(n => n.selected = false);
+            selectedSquads.forEach(s => s.selected = false);
             selectedNemos = [];
+            selectedSquads = [];
         }
     }
 });
@@ -144,7 +144,6 @@ canvas.addEventListener("mouseup", (e) => {
 
         // 드래그 거리가 거의 없으면 클릭으로 간주
         if (dragWidth < 5 && dragHeight < 5) {
-            // 클릭한 위치에 있는 네모 찾기
             let clickedNemo = null;
             for (const nemo of nemos) {
                 if (
@@ -159,21 +158,50 @@ canvas.addEventListener("mouseup", (e) => {
             }
 
             selectedNemos.forEach(n => (n.selected = false));
+            selectedSquads.forEach(s => (s.selected = false));
             selectedNemos = [];
+            selectedSquads = [];
 
             if (clickedNemo) {
                 clickedNemo.selected = true;
                 selectedNemos.push(clickedNemo);
+            } else {
+                let clickedSquad = null;
+                for (const squad of squadManager.squads) {
+                    const b = squad.bounds;
+                    if (pos.x >= b.x && pos.x <= b.x + b.w && pos.y >= b.y && pos.y <= b.y + b.h) {
+                        clickedSquad = squad;
+                        break;
+                    }
+                }
+                if (clickedSquad) {
+                    clickedSquad.selected = true;
+                    selectedSquads.push(clickedSquad);
+                }
             }
         } else {
             const minX = Math.min(selectionRect.x1, selectionRect.x2);
             const maxX = Math.max(selectionRect.x1, selectionRect.x2);
             const minY = Math.min(selectionRect.y1, selectionRect.y2);
             const maxY = Math.max(selectionRect.y1, selectionRect.y2);
+            selectedNemos.forEach(n => (n.selected = false));
+            selectedSquads.forEach(s => (s.selected = false));
+            selectedNemos = [];
+            selectedSquads = [];
             nemos.forEach(nemo => {
                 if (nemo.x >= minX && nemo.x <= maxX && nemo.y >= minY && nemo.y <= maxY) {
                     nemo.selected = true;
                     selectedNemos.push(nemo);
+                }
+            });
+            squadManager.squads.forEach(squad => {
+                const b = squad.bounds;
+                if (b.x >= minX && b.x + b.w <= maxX && b.y >= minY && b.y + b.h <= maxY) {
+                    const hasSelected = squad.nemos.some(n => selectedNemos.includes(n));
+                    if (!hasSelected) {
+                        squad.selected = true;
+                        selectedSquads.push(squad);
+                    }
                 }
             });
         }
@@ -184,9 +212,10 @@ canvas.addEventListener("mouseup", (e) => {
 
 canvas.addEventListener("contextmenu", (e) => {
     e.preventDefault();
-    if (selectedNemos.length > 0) {
+    if (selectedNemos.length > 0 || selectedSquads.length > 0) {
         const pos = worldMouse();
         selectedNemos.forEach(n => n.setDestination(pos.x, pos.y));
+        selectedSquads.forEach(s => s.nemos.forEach(n => n.setDestination(pos.x, pos.y)));
     }
 });
 
