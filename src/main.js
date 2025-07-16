@@ -1,6 +1,7 @@
 // main.js
 import Nemo from './Nemo.js';  // Nemo.js에서 Nemo 클래스를 가져옵니다.
 import Grid from './Grid.js';
+import { NemoSquadManager } from './NemoSquadManager.js';
 
 
 // Canvas 및 Context 설정
@@ -17,7 +18,8 @@ const backgroundHeight = 1200; // 배경 높이 (원하는 크기로 설정)
 
 
 // Nemo 보다 약간 작은 크기의 그리드를 생성
-const mainGrid = new Grid(40)
+const mainGrid = new Grid(40);
+const squadManager = new NemoSquadManager(mainGrid.cellSize);
 
 
 // 카메라 변수 및 이동 속도
@@ -83,6 +85,7 @@ const nemos = [blueArmyNemo];
 for (let i = 0; i < 5; i++) {
     nemos.push(new Nemo(300 + i * 60, 300, "red", ["attack"], "unit"));
 }
+squadManager.updateSquads(nemos);
 let selectedNemos = [];
 let isSelecting = false;
 let selectionStart = null;
@@ -110,6 +113,7 @@ canvas.addEventListener("mousedown", (e) => {
     if (e.button === 0) {
         if (ghostNemo) {
             nemos.push(ghostNemo);
+            squadManager.updateSquads(nemos);
             ghostNemo = null;
         } else {
             isSelecting = true;
@@ -201,6 +205,7 @@ function gameLoop() {
     // Nemo 업데이트 (플랫폼 업데이트 및 Nemo 이동)
     const enemies = nemos;
     nemos.forEach(nemo => nemo.update(enemies));
+    squadManager.updateSquads(nemos);
 
     // 사망한 네모 제거
     for (let i = nemos.length - 1; i >= 0; i--) {
@@ -231,6 +236,7 @@ function gameLoop() {
     ctx.drawImage(background, 0, 0, backgroundWidth, backgroundHeight);
 
     mainGrid.draw(ctx);
+    squadManager.draw(ctx);
 
     // Nemo 객체들을 배경 위에 그리기
     nemos.forEach(nemo => nemo.draw(ctx));

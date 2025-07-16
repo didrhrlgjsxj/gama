@@ -1,4 +1,4 @@
-// NemoGroupManager.js
+// NemoSquadManager.js
 
 // This file provides a small manager that automatically groups Nemos
 // by distance. Groups are called "Nemo_squad".  Nemos within
@@ -56,17 +56,17 @@ class NemoSquad {
     }
 }
 
-class NemoGroupManager {
+class NemoSquadManager {
     constructor(gridCellSize = 40) {
-        this.groups = [];
+        this.squads = [];
         this.cellSize = gridCellSize;
         this.linkDist = this.cellSize * 5;
         this.maxGroup = this.cellSize * 20;
     }
 
     // Build squads from given nemos array
-    updateGroups(nemos) {
-        this.groups = [];
+    updateSquads(nemos) {
+        this.squads = [];
         const visited = new Set();
         for (const nemo of nemos) {
             if (visited.has(nemo)) continue;
@@ -100,16 +100,16 @@ class NemoGroupManager {
                 });
                 const removed = squad.nemos.splice(farIndex, 1);
                 squad.updateBounds();
-                this.groups.push(new NemoSquad(removed, nemo.team, this.cellSize));
+                this.squads.push(new NemoSquad(removed, nemo.team, this.cellSize));
             }
             squad.updateBounds();
-            this.groups.push(squad);
+            this.squads.push(squad);
         }
     }
 
     draw(ctx) {
-        this.groups.forEach(g => g.draw(ctx));
+        this.squads.forEach(g => g.draw(ctx));
     }
 }
 
-export { NemoGroupManager, NemoSquad };
+export { NemoSquadManager, NemoSquad };
