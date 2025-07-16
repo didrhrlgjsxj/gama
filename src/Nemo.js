@@ -207,6 +207,7 @@ class Nemo {
     }
     
     draw(ctx) {
+        // 플랫폼 본체와 총알을 먼저 그린다
         this.platforms.forEach(platform => platform.draw(ctx));
 
         // 가장 가까운 적이 있으면 그려주기
@@ -239,6 +240,11 @@ class Nemo {
             ctx.fill();
             ctx.stroke();
         }
+
+        // 네모가 그려진 후 이펙트를 그려 상위에 보이도록 한다
+        this.platforms.forEach(p => {
+            if (p.drawEffects) p.drawEffects(ctx);
+        });
         ctx.restore();
     }
 }

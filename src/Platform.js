@@ -1,7 +1,7 @@
 // Platform.js
 import { mainGrid } from './main.js';  // mainGrid를 가져옵니다.
 import Bullet from './Bullet.js';
-import HitEffect from './HitEffect.js';
+import HitEffect, { mixWithBlack } from './HitEffect.js';
 import MuzzleFlash from './MuzzleFlash.js';
 
 class Platform {
@@ -309,11 +309,12 @@ class AttackPlatform extends Platform {
             for (const target of this.parent.allEnemies || []) {
                 const dx = bullet.x - target.x;
                 const dy = bullet.y - target.y;
-                if (Math.hypot(dx, dy) < target.size / 2) {
+                if (Math.hypot(dx, dy) < target.size / 2 + bullet.size / 2) {
                     if (target.team !== this.parent.team) {
                         target.hp -= this.attackPower;
                     }
-                    this.effects.push(new HitEffect(bullet.x, bullet.y, bullet.size, this.hitEffectDuration));
+                    const color = mixWithBlack(target.borderColor || target.fillColor || 'black', 0.5);
+                    this.effects.push(new HitEffect(bullet.x, bullet.y, bullet.size, bullet.angle, color, this.hitEffectDuration));
                     remove = true;
                     break;
                 }
@@ -344,11 +345,12 @@ class AttackPlatform extends Platform {
             ctx.drawImage(this.inImage, -this.inImage.width / 2 + this.recoilOffset, -this.inImage.height / 2);
         }
         ctx.restore();
-
-        // 이펙트 그리기
-        this.effects.forEach(e => e.draw(ctx));
-        // 총알 그리기
+        // 총알 그리기 (이펙트는 별도 레이어에서 그림)
         this.bullets.forEach(b => b.draw(ctx));
+    }
+
+    drawEffects(ctx) {
+        this.effects.forEach(e => e.draw(ctx));
     }
 }
 
