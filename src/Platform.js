@@ -1,6 +1,8 @@
 // Platform.js
 import { mainGrid } from './main.js';  // mainGrid를 가져옵니다.
 import Bullet from './Bullet.js';
+import HitEffect from './HitEffect.js';
+import MuzzleFlash from './MuzzleFlash.js';
 
 class Platform {
     constructor(parent, type = "move") {
@@ -176,6 +178,13 @@ class AttackPlatform extends Platform {
         this.lastShot = 0;
         this.bullets = [];
 
+        // 이펙트 관리용 배열
+        this.effects = [];
+        this.hitEffectDuration = 20;
+        this.muzzleColor = this.parent.team === 'red'
+            ? 'rgba(60,0,0,0.7)'
+            : 'rgba(0,0,60,0.7)';
+
         // 유닛 무기의 기본 위치를 네모 중심 기준 오른쪽으로 살짝 이동
         this.rightOffset = (this.parent.size / 10) * 3;
 
@@ -279,24 +288,34 @@ class AttackPlatform extends Platform {
                 this.lastShot = now;
                 // 발사 시 총구가 뒤로 밀리는 효과
                 this.recoilOffset = -15;
+                // 총구 섬광 이펙트 생성
+                this.effects.push(new MuzzleFlash(this, this.muzzleColor, 10));
             }
         }
 
         // 총알 업데이트 및 충돌 처리
         this.bullets = this.bullets.filter(bullet => {
             bullet.update();
-            // 적 충돌 검사
-            for (const enemy of this.parent.allEnemies || []) {
-                if (enemy.team !== this.parent.team) {
-                    const dx = bullet.x - enemy.x;
-                    const dy = bullet.y - enemy.y;
-                    if (Math.hypot(dx, dy) < enemy.size / 2) {
-                        enemy.hp -= this.attackPower;
-                        return false;
+            let remove = false;
+            for (const target of this.parent.allEnemies || []) {
+                const dx = bullet.x - target.x;
+                const dy = bullet.y - target.y;
+                if (Math.hypot(dx, dy) < target.size / 2) {
+                    if (target.team !== this.parent.team) {
+                        target.hp -= this.attackPower;
                     }
+                    this.effects.push(new HitEffect(bullet.x, bullet.y, bullet.size, this.hitEffectDuration));
+                    remove = true;
+                    break;
                 }
             }
-            return bullet.traveled < bullet.range;
+            return !remove && bullet.traveled < bullet.range;
+        });
+
+        // 이펙트 업데이트
+        this.effects = this.effects.filter(e => {
+            e.update();
+            return !e.isDone();
         });
 
         // 반동으로 밀린 총구가 원위치하도록 회복
@@ -317,6 +336,8 @@ class AttackPlatform extends Platform {
         }
         ctx.restore();
 
+        // 이펙트 그리기
+        this.effects.forEach(e => e.draw(ctx));
         // 총알 그리기
         this.bullets.forEach(b => b.draw(ctx));
     }
