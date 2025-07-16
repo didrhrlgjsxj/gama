@@ -3,8 +3,9 @@
 class Grid {
     constructor(cellSize) {
         this.cellSize = cellSize; // 셀 크기 설정
-        this.gridWidth = window.innerWidth / this.cellSize; // 그리드의 가로 크기
-        this.gridHeight = window.innerHeight / this.cellSize; // 그리드의 세로 크기
+        // 전체 그리드 영역을 기존보다 2배 넓게 설정
+        this.gridWidth = (window.innerWidth * 2) / this.cellSize;
+        this.gridHeight = (window.innerHeight * 2) / this.cellSize;
     }
 
     draw(ctx) {
@@ -16,7 +17,7 @@ class Grid {
         for (let x = 0; x <= this.gridWidth; x++) {
             ctx.beginPath();
             ctx.moveTo(x * this.cellSize, 0);
-            ctx.lineTo(x * this.cellSize, window.innerHeight);
+            ctx.lineTo(x * this.cellSize, window.innerHeight * 2);
             ctx.stroke();
         }
 
@@ -24,7 +25,7 @@ class Grid {
         for (let y = 0; y <= this.gridHeight; y++) {
             ctx.beginPath();
             ctx.moveTo(0, y * this.cellSize);
-            ctx.lineTo(window.innerWidth, y * this.cellSize);
+            ctx.lineTo(window.innerWidth * 2, y * this.cellSize);
             ctx.stroke();
         }
 

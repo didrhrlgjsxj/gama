@@ -16,7 +16,8 @@ const backgroundWidth = 1600; // 배경 너비 (원하는 크기로 설정)
 const backgroundHeight = 1200; // 배경 높이 (원하는 크기로 설정)
 
 
-const mainGrid = new Grid(200)
+// Nemo 보다 약간 작은 크기의 그리드를 생성
+const mainGrid = new Grid(40)
 
 
 // 카메라 변수 및 이동 속도
@@ -134,16 +135,45 @@ canvas.addEventListener("mouseup", (e) => {
         const pos = worldMouse();
         selectionRect.x2 = pos.x;
         selectionRect.y2 = pos.y;
-        const minX = Math.min(selectionRect.x1, selectionRect.x2);
-        const maxX = Math.max(selectionRect.x1, selectionRect.x2);
-        const minY = Math.min(selectionRect.y1, selectionRect.y2);
-        const maxY = Math.max(selectionRect.y1, selectionRect.y2);
-        nemos.forEach(nemo => {
-            if (nemo.x >= minX && nemo.x <= maxX && nemo.y >= minY && nemo.y <= maxY) {
-                nemo.selected = true;
-                selectedNemos.push(nemo);
+        const dragWidth = Math.abs(selectionRect.x2 - selectionRect.x1);
+        const dragHeight = Math.abs(selectionRect.y2 - selectionRect.y1);
+
+        // 드래그 거리가 거의 없으면 클릭으로 간주
+        if (dragWidth < 5 && dragHeight < 5) {
+            // 클릭한 위치에 있는 네모 찾기
+            let clickedNemo = null;
+            for (const nemo of nemos) {
+                if (
+                    pos.x >= nemo.x - nemo.size / 2 &&
+                    pos.x <= nemo.x + nemo.size / 2 &&
+                    pos.y >= nemo.y - nemo.size / 2 &&
+                    pos.y <= nemo.y + nemo.size / 2
+                ) {
+                    clickedNemo = nemo;
+                    break;
+                }
             }
-        });
+
+            selectedNemos.forEach(n => (n.selected = false));
+            selectedNemos = [];
+
+            if (clickedNemo) {
+                clickedNemo.selected = true;
+                selectedNemos.push(clickedNemo);
+            }
+        } else {
+            const minX = Math.min(selectionRect.x1, selectionRect.x2);
+            const maxX = Math.max(selectionRect.x1, selectionRect.x2);
+            const minY = Math.min(selectionRect.y1, selectionRect.y2);
+            const maxY = Math.max(selectionRect.y1, selectionRect.y2);
+            nemos.forEach(nemo => {
+                if (nemo.x >= minX && nemo.x <= maxX && nemo.y >= minY && nemo.y <= maxY) {
+                    nemo.selected = true;
+                    selectedNemos.push(nemo);
+                }
+            });
+        }
+
         selectionRect = null;
     }
 });

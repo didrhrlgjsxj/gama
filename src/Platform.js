@@ -116,7 +116,7 @@ class MovePlatform extends Platform {
 
     draw(ctx) {
 
-        // 빔(선) 그리기: moveMagnitude가 0보다 클 때, Nemo와 플랫폼 사이를 연결
+        // 무브 플랫폼 빔(선) 그리기: moveMagnitude가 0보다 클 때, Nemo와 플랫폼 사이를 연결
         if (this.moveMagnitude > 0) {
             ctx.save();
             // 연한 초록색(투명도 포함)로 선을 설정
@@ -252,7 +252,7 @@ class AttackPlatform extends Platform {
                 this.bullets.push(new Bullet(this.x, this.y, this.angle, this.bulletSpeed, this.attackRange));
                 this.lastShot = now;
                 // 발사 시 총구가 뒤로 밀리는 효과
-                this.recoilOffset = -10;
+                this.recoilOffset = -15;
             }
         }
 
