@@ -86,6 +86,14 @@ let selectedSquads = [];
 let isSelecting = false;
 let selectionStart = null;
 let selectionRect = null;
+let isMoveDragging = false;
+let moveRect = null;
+
+function getAllSelectedNemos() {
+    const set = new Set(selectedNemos);
+    selectedSquads.forEach(s => s.nemos.forEach(n => set.add(n)));
+    return Array.from(set);
+}
 //blueUnitNemo
 
 function worldMouse() {
@@ -123,6 +131,13 @@ canvas.addEventListener("mousedown", (e) => {
             selectedSquads = [];
         }
     }
+    if (e.button === 2) {
+        if (selectedNemos.length > 0 || selectedSquads.length > 0) {
+            isMoveDragging = true;
+            moveRect = { x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y };
+            e.preventDefault();
+        }
+    }
 });
 
 canvas.addEventListener("mousemove", (e) => {
@@ -130,6 +145,11 @@ canvas.addEventListener("mousemove", (e) => {
         const pos = worldMouse();
         selectionRect.x2 = pos.x;
         selectionRect.y2 = pos.y;
+    }
+    if (isMoveDragging && moveRect) {
+        const pos = worldMouse();
+        moveRect.x2 = pos.x;
+        moveRect.y2 = pos.y;
     }
 });
 
@@ -208,15 +228,40 @@ canvas.addEventListener("mouseup", (e) => {
 
         selectionRect = null;
     }
+
+    if (isMoveDragging && e.button === 2) {
+        isMoveDragging = false;
+        const pos = worldMouse();
+        moveRect.x2 = pos.x;
+        moveRect.y2 = pos.y;
+        const dragW = Math.abs(moveRect.x2 - moveRect.x1);
+        const dragH = Math.abs(moveRect.y2 - moveRect.y1);
+        const targets = getAllSelectedNemos();
+        if (dragW < 5 && dragH < 5) {
+            targets.forEach(n => n.setDestination(pos.x, pos.y));
+        } else {
+            const minX = Math.min(moveRect.x1, moveRect.x2);
+            const minY = Math.min(moveRect.y1, moveRect.y2);
+            const width = dragW;
+            const height = dragH;
+            const count = targets.length;
+            const cols = Math.ceil(Math.sqrt(count));
+            const rows = Math.ceil(count / cols);
+            for (let i = 0; i < count; i++) {
+                const col = i % cols;
+                const row = Math.floor(i / cols);
+                const x = minX + width * (col + 0.5) / cols;
+                const y = minY + height * (row + 0.5) / rows;
+                targets[i].setDestination(x, y);
+            }
+        }
+        moveRect = null;
+        e.preventDefault();
+    }
 });
 
 canvas.addEventListener("contextmenu", (e) => {
     e.preventDefault();
-    if (selectedNemos.length > 0 || selectedSquads.length > 0) {
-        const pos = worldMouse();
-        selectedNemos.forEach(n => n.setDestination(pos.x, pos.y));
-        selectedSquads.forEach(s => s.nemos.forEach(n => n.setDestination(pos.x, pos.y)));
-    }
 });
 
 // 게임 루프
@@ -277,6 +322,15 @@ function gameLoop() {
         const y = Math.min(selectionRect.y1, selectionRect.y2);
         const w = Math.abs(selectionRect.x2 - selectionRect.x1);
         const h = Math.abs(selectionRect.y2 - selectionRect.y1);
+        ctx.strokeRect(x, y, w, h);
+    }
+    if (moveRect) {
+        ctx.strokeStyle = 'rgba(0,0,255,0.5)';
+        ctx.lineWidth = 1;
+        const x = Math.min(moveRect.x1, moveRect.x2);
+        const y = Math.min(moveRect.y1, moveRect.y2);
+        const w = Math.abs(moveRect.x2 - moveRect.x1);
+        const h = Math.abs(moveRect.y2 - moveRect.y1);
         ctx.strokeRect(x, y, w, h);
     }
 

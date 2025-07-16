@@ -85,10 +85,26 @@ class MovePlatform extends Platform {
         this.width = 30;
         this.height = 10;
         this.moveMagnitude = 0; // moveVector 크기를 저장할 프로퍼티 추가
+        this.destination = null; // 이동 목표 지점
     }
 
     update() {
         super.update(); // 플랫폼 공통 업데이트
+
+        // 목적지가 설정된 경우 그 방향으로 이동
+        if (this.destination) {
+            const dx = this.destination.x - this.x;
+            const dy = this.destination.y - this.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist < 5) {
+                // 목표 지점에 거의 도달하면 복귀 모드로 전환
+                this.destination = null;
+                this.mode = "return";
+            } else {
+                this.angle = Math.atan2(dy, dx);
+                this.mode = "moveOn";
+            }
+        }
 
         // 거리 제한 (Nemo로부터 최대 거리 초과 방지)
         const distance = Math.hypot(this.x - this.parent.x, this.y - this.parent.y);

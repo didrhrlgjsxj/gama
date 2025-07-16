@@ -77,6 +77,10 @@ class Nemo {
 
         this.setDestination = (x, y) => {
             this.destination = { x, y };
+            const moveP = this.platforms.find(p => p instanceof MovePlatform);
+            if (moveP) {
+                moveP.destination = { x, y };
+            }
         };
 
         // 자신을 그리드에 추가할 수 있다면 그리드에 추가
@@ -126,13 +130,25 @@ class Nemo {
             const dist = Math.hypot(dx, dy);
             const ang = Math.atan2(dy, dx);
             this.angle = ang;
-            if (dist > this.maxSpeed) {
-                this.x += Math.cos(ang) * this.maxSpeed;
-                this.y += Math.sin(ang) * this.maxSpeed;
-            } else {
+            if (this.unitType !== "army") {
+                if (dist > this.maxSpeed) {
+                    this.x += Math.cos(ang) * this.maxSpeed;
+                    this.y += Math.sin(ang) * this.maxSpeed;
+                } else {
+                    this.x = this.destination.x;
+                    this.y = this.destination.y;
+                    this.destination = null;
+                }
+            } else if (dist < this.maxSpeed) {
+                // army 타입은 이동이 완료되면 목적지를 해제하고 플랫폼을 복귀시킨다
                 this.x = this.destination.x;
                 this.y = this.destination.y;
                 this.destination = null;
+                const moveP = this.platforms.find(p => p instanceof MovePlatform);
+                if (moveP) {
+                    moveP.destination = null;
+                    moveP.mode = "return";
+                }
             }
         }
 
