@@ -37,9 +37,21 @@ class Nemo {
         }
 
         // 플랫폼 타입을 파라미터로 받아서 해당 타입에 맞는 플랫폼을 생성
+        const attackCount = platformTypes.filter(t => t === "attack").length;
+        let attackIndex = 0;
+        const step = attackCount > 0 ? (2 * Math.PI / attackCount) : 0;
+        const start = attackCount % 2 === 0 ? step / 2 : 0;
         this.platforms = platformTypes.map(type => {
             if (type === "move") return new MovePlatform(this);
-            if (type === "attack") return new AttackPlatform(this);
+            if (type === "attack") {
+                if (attackCount === 1) {
+                    return new AttackPlatform(this);
+                } else {
+                    const angle = start + attackIndex * step;
+                    attackIndex++;
+                    return new AttackPlatform(this, angle);
+                }
+            }
         });
 
         // unit 타입의 이동 명령 관련 메서드

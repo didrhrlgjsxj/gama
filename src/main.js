@@ -105,7 +105,12 @@ function worldMouse() {
 
 function createGhost(type, team) {
     const { x, y } = worldMouse();
-    const platformTypes = type === "army" ? ["move", "attack"] : ["attack"];
+    let platformTypes;
+    if (type === "army") {
+        platformTypes = ["move", "attack", "attack"]; // 공격 플랫폼 2개
+    } else {
+        platformTypes = ["attack"];
+    }
     ghostNemo = new Nemo(x, y, team, platformTypes, type);
 }
 

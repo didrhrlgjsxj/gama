@@ -164,7 +164,7 @@ class MovePlatform extends Platform {
 
 // AttackPlatform은 Platform을 상속받아 공격 관련 로직을 추가합니다.
 class AttackPlatform extends Platform {
-    constructor(parent) {
+    constructor(parent, slotAngle = null) {
         super(parent, "attack");
         this.enemyAngle = 0; // 적의 방향 저장
 
@@ -188,6 +188,9 @@ class AttackPlatform extends Platform {
         this.outImage = new Image();
         this.inImage.src = `images/${prefix}_in_gun.png`;
         this.outImage.src = `images/${prefix}_out_gun.png`;
+
+        // 고정 배치 각도(라디안). null이면 기존 동작 유지
+        this.slotAngle = slotAngle;
     }
 
     keyInputAngle(newAngle) {
@@ -199,64 +202,71 @@ class AttackPlatform extends Platform {
     }
 
     update() {
-        // 공통 위치 업데이트
-        super.update();
+        if (this.slotAngle === null) {
+            // 기존 동작 (단일 플랫폼)
+            super.update();
 
-        if (this.parent.unitType === "unit") {
-            // 유닛 타입은 부모의 각도를 그대로 따른다
-            this.angle = this.parent.angle;
-            this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
-                + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
-            this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
-                + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
+            if (this.parent.unitType === "unit") {
+                this.angle = this.parent.angle;
+                this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
+                    + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
+                this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
+                    + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
+                if (this.parent.nearestEnemy) {
+                    const dx = this.parent.nearestEnemy.x - this.parent.x;
+                    const dy = this.parent.nearestEnemy.y - this.parent.y;
+                    const enemyAngle = Math.atan2(dy, dx);
+                    let diff = enemyAngle - this.angle;
+                    diff = ((diff + Math.PI) % (2 * Math.PI)) - Math.PI;
+                    this.mode2 = Math.abs(diff) < Math.PI / 30 ? "attackOn" : "idle";
+                } else {
+                    this.mode2 = "idle";
+                }
+            }
 
+            let targetAngle;
             if (this.parent.nearestEnemy) {
                 const dx = this.parent.nearestEnemy.x - this.parent.x;
                 const dy = this.parent.nearestEnemy.y - this.parent.y;
-                const enemyAngle = Math.atan2(dy, dx);
-                let diff = enemyAngle - this.angle;
-                diff = ((diff + Math.PI) % (2 * Math.PI)) - Math.PI;
-                this.mode2 = Math.abs(diff) < Math.PI / 30 ? "attackOn" : "idle";
+                targetAngle = Math.atan2(dy, dx);
             } else {
+                this.angle = this.parent.angle;
+                this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
+                    + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
+                this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
+                    + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
                 this.mode2 = "idle";
+                return;
             }
-            // 이후 로직 진행 가능
-        }
 
-        let targetAngle;
-
-        if (this.parent.nearestEnemy) {
-            // 적이 있으면 적 방향으로만 회전
-            const dx = this.parent.nearestEnemy.x - this.parent.x;
-            const dy = this.parent.nearestEnemy.y - this.parent.y;
-            targetAngle = Math.atan2(dy, dx);
-        } else {
-            // 적이 없으면 네모의 현재 angle을 그대로 따라감
-            this.angle = this.parent.angle; // 즉시 갱신
+            let angleDiff = targetAngle - this.angle;
+            angleDiff = ((angleDiff + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+            this.mode2 = Math.abs(angleDiff) < Math.PI / 30 ? "attackOn" : "idle";
+            this.angle += angleDiff * 0.1;
             this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
                 + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
             this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
                 + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
-            this.mode2 = "idle";
-            return; // 조기 종료 (아래 회전 로직 생략)
-        }
-
-        // 적이 있을 경우에만 회전 로직 실행
-        let angleDiff = targetAngle - this.angle;
-        angleDiff = ((angleDiff + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
-
-        if (Math.abs(angleDiff) < Math.PI / 30) {
-            this.mode2 = "attackOn";
         } else {
-            this.mode2 = "idle";
+            // 고정 위치 플랫폼(army 다수)
+            const baseAngle = this.parent.angle + this.slotAngle;
+            this.x = this.parent.x + Math.cos(baseAngle) * this.baseDistance;
+            this.y = this.parent.y + Math.sin(baseAngle) * this.baseDistance;
+
+            let targetAngle;
+            if (this.parent.nearestEnemy) {
+                const dx = this.parent.nearestEnemy.x - this.x;
+                const dy = this.parent.nearestEnemy.y - this.y;
+                targetAngle = Math.atan2(dy, dx);
+            } else {
+                targetAngle = baseAngle;
+            }
+
+            let angleDiff = targetAngle - this.angle;
+            angleDiff = ((angleDiff + Math.PI) % (2 * Math.PI)) - Math.PI;
+            this.mode2 = this.parent.nearestEnemy && Math.abs(angleDiff) < Math.PI / 30 ? "attackOn" : "idle";
+            this.angle += angleDiff * 0.1;
         }
-
-        this.angle += angleDiff * 0.1;
-
-        this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
-            + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
-        this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
-            + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
 
         // 공격 처리: 사정거리 내 적이 있고 조준이 완료되었을 때 총알 발사
         if (this.parent.nearestEnemy && this.mode2 === 'attackOn') {
@@ -302,9 +312,6 @@ class AttackPlatform extends Platform {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
-        if (this.outImage.complete) {
-            ctx.drawImage(this.outImage, -this.outImage.width / 2, -this.outImage.height / 2);
-        }
         if (this.inImage.complete) {
             ctx.drawImage(this.inImage, -this.inImage.width / 2 + this.recoilOffset, -this.inImage.height / 2);
         }
