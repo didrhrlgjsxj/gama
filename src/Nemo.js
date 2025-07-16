@@ -241,11 +241,12 @@ class Nemo {
             ctx.stroke();
         }
 
-        // 네모가 그려진 후 이펙트를 그려 상위에 보이도록 한다
+        ctx.restore();
+
+        // 네모가 그려진 후 이펙트를 전역 좌표계에서 그려 상위에 보이도록 한다
         this.platforms.forEach(p => {
             if (p.drawEffects) p.drawEffects(ctx);
         });
-        ctx.restore();
     }
 }
 
