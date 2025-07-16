@@ -202,6 +202,14 @@ class AttackPlatform extends Platform {
         this.slotAngle = slotAngle;
     }
 
+    getMuzzlePosition() {
+        const len = (this.inImage && this.inImage.width ? this.inImage.width : 0) / 2;
+        return {
+            x: this.x + Math.cos(this.angle) * (len + this.recoilOffset),
+            y: this.y + Math.sin(this.angle) * (len + this.recoilOffset)
+        };
+    }
+
     keyInputAngle(newAngle) {
         if (!this.parent.nearestEnemy) {
             this.angle = newAngle;
@@ -284,7 +292,8 @@ class AttackPlatform extends Platform {
             const dy = this.parent.nearestEnemy.y - this.y;
             const dist = Math.hypot(dx, dy);
             if (dist <= this.attackRange && (now - this.lastShot) >= 1000 / this.attackSpeed) {
-                this.bullets.push(new Bullet(this.x, this.y, this.angle, this.bulletSpeed, this.attackRange));
+                const muzzle = this.getMuzzlePosition();
+                this.bullets.push(new Bullet(muzzle.x, muzzle.y, this.angle, this.bulletSpeed, this.attackRange, this.parent.nearestEnemy));
                 this.lastShot = now;
                 // 발사 시 총구가 뒤로 밀리는 효과
                 this.recoilOffset = -15;
