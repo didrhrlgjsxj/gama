@@ -1,6 +1,5 @@
 // Platform.js
 import { mainGrid } from './main.js';  // mainGrid를 가져옵니다.
-import Bullet from './Bullet.js';
 import HitEffect, { mixWithBlack } from './HitEffect.js';
 import MuzzleFlash from './MuzzleFlash.js';
 
@@ -99,11 +98,8 @@ class MovePlatform extends Platform {
             const dy = this.destination.y - this.y;
             const dist = Math.hypot(dx, dy);
             if (dist < 5) {
-                // 목표 지점 도달 시 네모를 정확히 위치시키고 정지
-                this.parent.x = this.destination.x;
-                this.parent.y = this.destination.y;
+                // 플랫폼이 먼저 목표 지점에 도달하면 복귀
                 this.parent.destination = null;
-                this.parent.moveVector = { x: 0, y: 0 };
                 this.destination = null;
                 this.mode = "return";
             } else {
@@ -184,9 +180,8 @@ class AttackPlatform extends Platform {
         this.attackSpeed = 1;    // 초당 발사 수
         this.attackRange = 800;  // 사정거리
         this.attackPower = 1;    // 공격력
-        this.bulletSpeed = 30;
         this.lastShot = 0;
-        this.bullets = [];
+        this.hitSize = 6;
 
         // 이펙트 관리용 배열
         this.effects = [];
@@ -295,15 +290,25 @@ class AttackPlatform extends Platform {
             this.angle += angleDiff * 0.1;
         }
 
-        // 공격 처리: 사정거리 내 적이 있고 조준이 완료되었을 때 총알 발사
+        // 공격 처리: 사정거리 내 적이 있고 조준이 완료되었을 때 즉발 공격
         if (this.parent.nearestEnemy && this.mode2 === 'attackOn') {
             const now = Date.now();
             const dx = this.parent.nearestEnemy.x - this.x;
             const dy = this.parent.nearestEnemy.y - this.y;
             const dist = Math.hypot(dx, dy);
             if (dist <= this.attackRange && (now - this.lastShot) >= 1000 / this.attackSpeed) {
-                const muzzle = this.getMuzzlePosition();
-                this.bullets.push(new Bullet(muzzle.x, muzzle.y, this.angle, this.bulletSpeed, this.attackRange, this.parent.nearestEnemy));
+                const target = this.parent.nearestEnemy;
+                if (target.team !== this.parent.team) {
+                    target.hp -= this.attackPower;
+                }
+                const hitAngle = Math.atan2(target.y - this.y, target.x - this.x);
+                const perp = hitAngle + Math.PI / 2;
+                const offset = target.size / 2;
+                const rand = (Math.random() - 0.5) * target.size * 0.8;
+                const hx = target.x - Math.cos(hitAngle) * offset + Math.cos(perp) * rand;
+                const hy = target.y - Math.sin(hitAngle) * offset + Math.sin(perp) * rand;
+                const color = mixWithBlack(target.borderColor || target.fillColor || 'black', 0.5);
+                this.effects.push(new HitEffect(hx, hy, this.hitSize, hitAngle, color, this.hitEffectDuration));
                 this.lastShot = now;
                 // 발사 시 총구가 뒤로 밀리는 효과
                 this.recoilOffset = -15;
@@ -311,26 +316,6 @@ class AttackPlatform extends Platform {
                 this.effects.push(new MuzzleFlash(this, this.muzzleColor, 10));
             }
         }
-
-        // 총알 업데이트 및 충돌 처리
-        this.bullets = this.bullets.filter(bullet => {
-            bullet.update();
-            let remove = false;
-            for (const target of this.parent.allEnemies || []) {
-                const dx = bullet.x - target.x;
-                const dy = bullet.y - target.y;
-                if (Math.hypot(dx, dy) < target.size / 2 + bullet.size / 2) {
-                    if (target.team !== this.parent.team) {
-                        target.hp -= this.attackPower;
-                    }
-                    const color = mixWithBlack(target.borderColor || target.fillColor || 'black', 0.5);
-                    this.effects.push(new HitEffect(bullet.x, bullet.y, bullet.size, bullet.angle, color, this.hitEffectDuration));
-                    remove = true;
-                    break;
-                }
-            }
-            return !remove && bullet.traveled < bullet.range;
-        });
 
         // 이펙트 업데이트
         this.effects = this.effects.filter(e => {
@@ -355,8 +340,6 @@ class AttackPlatform extends Platform {
             ctx.drawImage(this.inImage, -this.inImage.width / 2 + this.recoilOffset, -this.inImage.height / 2);
         }
         ctx.restore();
-        // 총알 그리기 (이펙트는 별도 레이어에서 그림)
-        this.bullets.forEach(b => b.draw(ctx));
     }
 
     drawEffects(ctx) {
