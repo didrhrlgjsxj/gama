@@ -149,7 +149,7 @@ class Nemo {
             this.targetAngle = Math.atan2(dy, dx);
         }
 
-        if (this.destination) {
+        if (this.destination && this.unitType !== "army") {
             const dx = this.destination.x - this.x;
             const dy = this.destination.y - this.y;
             const dist = Math.hypot(dx, dy);
@@ -188,6 +188,19 @@ class Nemo {
                 const mag = Math.hypot(this.moveVector.x, this.moveVector.y);
                 if (mag > 0.01) {
                     this.targetAngle = Math.atan2(this.moveVector.y, this.moveVector.x);
+                }
+            }
+            if (this.destination) {
+                const dist = Math.hypot(this.destination.x - this.x, this.destination.y - this.y);
+                if (dist < 5) {
+                    this.x = this.destination.x;
+                    this.y = this.destination.y;
+                    this.destination = null;
+                    const moveP = this.platforms.find(p => p instanceof MovePlatform);
+                    if (moveP) {
+                        moveP.destination = null;
+                        moveP.mode = "return";
+                    }
                 }
             }
         }
@@ -233,7 +246,18 @@ class Nemo {
         ctx.translate(this.x, this.y);
         if (this.unitType === "unit") {
             ctx.rotate(this.angle + Math.PI / 2);
-            ctx.strokeRect(-this.size / 2, -this.size / 2, this.size, this.size);
+            const h = this.size / 2;
+            // Draw a directional polygon resembling a simple armored unit
+            ctx.beginPath();
+            ctx.moveTo(0, -h); // front tip
+            ctx.lineTo(h * 0.6, -h * 0.3);
+            ctx.lineTo(h, 0);
+            ctx.lineTo(h * 0.6, h);
+            ctx.lineTo(-h * 0.6, h);
+            ctx.lineTo(-h, 0);
+            ctx.lineTo(-h * 0.6, -h * 0.3);
+            ctx.closePath();
+            ctx.stroke();
         } else {
             ctx.beginPath();
             ctx.arc(0, 0, this.size / 2, 0, Math.PI * 2);
