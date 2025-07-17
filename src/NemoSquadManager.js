@@ -20,12 +20,17 @@ class NemoSquad {
             this.bounds = {x:0, y:0, w:0, h:0};
             return;
         }
-        const xs = this.nemos.map(n => n.x);
-        const ys = this.nemos.map(n => n.y);
-        const minX = Math.min(...xs);
-        const maxX = Math.max(...xs);
-        const minY = Math.min(...ys);
-        const maxY = Math.max(...ys);
+        let minX = Infinity;
+        let maxX = -Infinity;
+        let minY = Infinity;
+        let maxY = -Infinity;
+        this.nemos.forEach(n => {
+            const half = n.size / 2;
+            minX = Math.min(minX, n.x - half);
+            maxX = Math.max(maxX, n.x + half);
+            minY = Math.min(minY, n.y - half);
+            maxY = Math.max(maxY, n.y + half);
+        });
         this.bounds = {
             x: minX,
             y: minY,
@@ -39,18 +44,13 @@ class NemoSquad {
         if (!this.bounds) return;
         const {x, y, w, h} = this.bounds;
         ctx.save();
-        const fill = this.team === 'red'
-            ? 'rgba(255, 0, 0, 0.1)'
-            : 'rgba(0, 0, 255, 0.1)';
         const stroke = this.team === 'red' ? 'darkred' : 'darkblue';
-        ctx.fillStyle = fill;
         ctx.strokeStyle = stroke;
         ctx.lineWidth = this.selected ? 4 : 2;
         if (this.selected) {
             ctx.shadowColor = stroke;
             ctx.shadowBlur = 10;
         }
-        ctx.fillRect(x, y, w, h);
         ctx.strokeRect(x, y, w, h);
         ctx.restore();
     }

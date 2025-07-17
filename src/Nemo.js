@@ -220,8 +220,7 @@ class Nemo {
             ctx.stroke();
         }
 
-        // Nemo 그리기
-        ctx.fillStyle = this.fillColor;
+        // Nemo 그리기 - 내부를 채우지 않고 윤곽선만 그린다
         ctx.strokeStyle = this.borderColor;
         ctx.lineWidth = 3;
         ctx.save();
@@ -232,12 +231,10 @@ class Nemo {
         ctx.translate(this.x, this.y);
         if (this.unitType === "unit") {
             ctx.rotate(this.angle + Math.PI / 2);
-            ctx.fillRect(-this.size / 2, -this.size / 2, this.size, this.size);
             ctx.strokeRect(-this.size / 2, -this.size / 2, this.size, this.size);
         } else {
             ctx.beginPath();
             ctx.arc(0, 0, this.size / 2, 0, Math.PI * 2);
-            ctx.fill();
             ctx.stroke();
         }
 
