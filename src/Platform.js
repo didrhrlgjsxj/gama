@@ -166,8 +166,14 @@ class MovePlatform extends Platform {
 
 // AttackPlatform은 Platform을 상속받아 공격 관련 로직을 추가합니다.
 class AttackPlatform extends Platform {
-    constructor(parent, slotAngle = null) {
+    constructor(parent, slotAngle = null, onHand = false) {
         super(parent, "attack");
+        this.onHand = onHand;
+        if (this.onHand) {
+            // 손에 들린 무기는 네모와 거의 붙어있으므로 기본 거리를 축소
+            this.baseDistance = this.parent.size / 2;
+            this.maxDistance = this.baseDistance;
+        }
         this.enemyAngle = 0; // 적의 방향 저장
 
         // 공격 관련 설정

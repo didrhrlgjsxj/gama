@@ -46,11 +46,13 @@ class Nemo {
             if (type === "move") return new MovePlatform(this);
             if (type === "attack") {
                 if (attackCount === 1) {
-                    return new AttackPlatform(this);
+                    // 단일 공격 플랫폼은 네모가 손에 들고 있는 무기(On-hand)
+                    return new AttackPlatform(this, null, true);
                 } else {
+                    // 다수의 공격 플랫폼은 고정 위치에 배치되는 Off-hand 무기
                     const angle = start + attackIndex * step;
                     attackIndex++;
-                    return new AttackPlatform(this, angle);
+                    return new AttackPlatform(this, angle, false);
                 }
             }
         });
@@ -175,6 +177,10 @@ class Nemo {
         // 각 플랫폼에 대해 업데이트 (플랫폼 내부에서 네모의 위치를 업데이트합니다)
         this.platforms.forEach(platform => platform.update());
 
+        // 온핸드 무기가 사격 중인지 확인
+        const isShooting = this.platforms.some(p =>
+            p instanceof AttackPlatform && p.onHand && p.mode2 === 'attackOn');
+
     
 
         if (this.hp <= 0 && !this.dead) {
@@ -182,7 +188,7 @@ class Nemo {
         }
 
         if (this.unitType === "army") {
-            if (this.moveVector) {
+            if (!isShooting && this.moveVector) {
                 this.x += this.moveVector.x;
                 this.y += this.moveVector.y;
                 const mag = Math.hypot(this.moveVector.x, this.moveVector.y);
@@ -207,7 +213,7 @@ class Nemo {
 
         const turned = this.rotateTowards(this.targetAngle);
 
-        if (this.unitType === "unit" && this.moving && turned) {
+        if (this.unitType === "unit" && this.moving && turned && !isShooting) {
             const dir = this.reverse ? -1 : 1;
             this.x += Math.cos(this.angle) * this.maxSpeed * dir;
             this.y += Math.sin(this.angle) * this.maxSpeed * dir;
