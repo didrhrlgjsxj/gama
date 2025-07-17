@@ -21,8 +21,9 @@ class Nemo {
         this.destination = null; // 이동 목표 위치
 
         // unit 타입일 경우 회전 및 이동을 직접 제어하기 위한 프로퍼티
+        this.targetAngle = 0;
+        this.rotationSpeed = Math.PI / (0.4 * 60); // 뒤돌기 약 0.4초 기준
         if (this.unitType === "unit") {
-            this.targetAngle = 0;
             this.moving = false;
             this.reverse = false; // 뒤로 이동 여부
         }
@@ -95,6 +96,18 @@ class Nemo {
             }
         };
 
+        this.rotateTowards = (angle) => {
+            let diff = angle - this.angle;
+            diff = ((diff + Math.PI) % (2 * Math.PI)) - Math.PI;
+            if (Math.abs(diff) <= this.rotationSpeed) {
+                this.angle = angle;
+                return true;
+            } else {
+                this.angle += Math.sign(diff) * this.rotationSpeed;
+                return false;
+            }
+        };
+
         // 자신을 그리드에 추가할 수 있다면 그리드에 추가
         //MainGrid.addEntity(this); 
     }
@@ -141,18 +154,12 @@ class Nemo {
             const dy = this.destination.y - this.y;
             const dist = Math.hypot(dx, dy);
             const ang = Math.atan2(dy, dx);
-            this.angle = ang;
-            if (this.unitType !== "army") {
-                if (dist > this.maxSpeed) {
-                    this.x += Math.cos(ang) * this.maxSpeed;
-                    this.y += Math.sin(ang) * this.maxSpeed;
-                } else {
-                    this.x = this.destination.x;
-                    this.y = this.destination.y;
-                    this.destination = null;
-                }
-            } else if (dist < this.maxSpeed) {
-                // army 타입은 이동이 완료되면 목적지를 해제하고 플랫폼을 복귀시킨다
+            this.targetAngle = ang;
+            this.rotateTowards(this.targetAngle);
+            const step = Math.min(this.maxSpeed, dist);
+            this.x += Math.cos(this.angle) * step;
+            this.y += Math.sin(this.angle) * step;
+            if (dist <= this.maxSpeed) {
                 this.x = this.destination.x;
                 this.y = this.destination.y;
                 this.destination = null;
@@ -175,27 +182,22 @@ class Nemo {
         }
 
         if (this.unitType === "army") {
-            // 네모의 이동 벡터 업데이트 (MovePlatform에서 계산)
             if (this.moveVector) {
                 this.x += this.moveVector.x;
                 this.y += this.moveVector.y;
+                const mag = Math.hypot(this.moveVector.x, this.moveVector.y);
+                if (mag > 0.01) {
+                    this.targetAngle = Math.atan2(this.moveVector.y, this.moveVector.x);
+                }
             }
-        } else if (this.unitType === "unit") {
-            // unit 타입은 직접 회전하고 이동한다
-            let angleDiff = this.targetAngle - this.angle;
-            angleDiff = ((angleDiff + Math.PI) % (2 * Math.PI)) - Math.PI;
+        }
 
-            if (Math.abs(angleDiff) > 0.01) {
-                this.angle += angleDiff * 0.1;
-            } else {
-                this.angle = this.targetAngle;
-            }
+        const turned = this.rotateTowards(this.targetAngle);
 
-            if (this.moving && Math.abs(angleDiff) <= 0.01) {
-                const dir = this.reverse ? -1 : 1;
-                this.x += Math.cos(this.angle) * this.maxSpeed * dir;
-                this.y += Math.sin(this.angle) * this.maxSpeed * dir;
-            }
+        if (this.unitType === "unit" && this.moving && turned) {
+            const dir = this.reverse ? -1 : 1;
+            this.x += Math.cos(this.angle) * this.maxSpeed * dir;
+            this.y += Math.sin(this.angle) * this.maxSpeed * dir;
         }
     }
 

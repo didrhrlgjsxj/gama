@@ -45,12 +45,17 @@ class NemoSquad {
         const {x, y, w, h} = this.bounds;
         ctx.save();
         const stroke = this.team === 'red' ? 'darkred' : 'darkblue';
+        const fill = this.team === 'red'
+            ? 'rgba(255,0,0,0.15)'
+            : 'rgba(0,0,255,0.15)';
         ctx.strokeStyle = stroke;
+        ctx.fillStyle = fill;
         ctx.lineWidth = this.selected ? 4 : 2;
         if (this.selected) {
             ctx.shadowColor = stroke;
             ctx.shadowBlur = 10;
         }
+        ctx.fillRect(x, y, w, h);
         ctx.strokeRect(x, y, w, h);
         ctx.restore();
     }
