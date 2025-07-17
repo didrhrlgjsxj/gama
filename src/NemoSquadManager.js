@@ -60,8 +60,8 @@ class NemoSquadManager {
     constructor(gridCellSize = 40) {
         this.squads = [];
         this.cellSize = gridCellSize;
-        this.linkDist = this.cellSize * 5;
-        this.maxGroup = this.cellSize * 20;
+        this.linkDist = this.cellSize * 15;
+        this.maxGroup = this.cellSize * 40;
     }
 
     // Build squads from given nemos array

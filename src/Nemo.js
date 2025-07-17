@@ -29,10 +29,10 @@ class Nemo {
 
         // 팀에 따른 색상 설정: fillColor는 연한 색, borderColor는 진한 색
         if (team === "red") {
-            this.fillColor = "lightcoral";
+            this.fillColor = "white";
             this.borderColor = "darkred";
         } else {
-            this.fillColor = "lightblue";
+            this.fillColor = "white";
             this.borderColor = "darkblue";
         }
 
