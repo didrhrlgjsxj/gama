@@ -99,7 +99,6 @@ class MovePlatform extends Platform {
             const dist = Math.hypot(dx, dy);
             if (dist < 5) {
                 // 플랫폼이 먼저 목표 지점에 도달하면 복귀
-                this.parent.destination = null;
                 this.destination = null;
                 this.mode = "return";
             } else {
@@ -117,7 +116,7 @@ class MovePlatform extends Platform {
         }
 
         // 네모 이동: currentDistance가 기본거리보다 클 경우
-        if (this.currentDistance > this.baseDistance && this.parent.destination) { // 네모 이동
+        if (this.currentDistance > this.baseDistance && this.parent.destination && this.destination) { // 네모 이동
             const moveMagnitude = (this.currentDistance - this.baseDistance) * this.parent.maxSpeed / 50;
             const pullAngle = Math.atan2(this.y - this.parent.y, this.x - this.parent.x);
             this.parent.moveVector = {
@@ -315,6 +314,13 @@ class AttackPlatform extends Platform {
                 // 총구 섬광 이펙트 생성
                 this.effects.push(new MuzzleFlash(this, this.muzzleColor, 10));
             }
+        }
+
+        // 범위 내 타겟이 없거나 사망했으면 남아있는 이펙트 제거
+        if (!this.parent.nearestEnemy || this.parent.nearestEnemy.dead ||
+            Math.hypot(this.parent.nearestEnemy.x - this.x,
+                      this.parent.nearestEnemy.y - this.y) > this.attackRange) {
+            this.effects = [];
         }
 
         // 이펙트 업데이트

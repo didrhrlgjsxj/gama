@@ -188,13 +188,23 @@ class Nemo {
         }
 
         if (this.unitType === "army") {
-            if (!isShooting && this.moveVector) {
+            if (!isShooting && this.moveVector && (this.moveVector.x || this.moveVector.y)) {
                 this.x += this.moveVector.x;
                 this.y += this.moveVector.y;
                 const mag = Math.hypot(this.moveVector.x, this.moveVector.y);
                 if (mag > 0.01) {
                     this.targetAngle = Math.atan2(this.moveVector.y, this.moveVector.x);
                 }
+            } else if (!isShooting && this.destination) {
+                const dx = this.destination.x - this.x;
+                const dy = this.destination.y - this.y;
+                const dist = Math.hypot(dx, dy);
+                const step = Math.min(this.maxSpeed, dist);
+                const ang = Math.atan2(dy, dx);
+                this.targetAngle = ang;
+                this.rotateTowards(this.targetAngle);
+                this.x += Math.cos(this.angle) * step;
+                this.y += Math.sin(this.angle) * step;
             }
             if (this.destination) {
                 const dist = Math.hypot(this.destination.x - this.x, this.destination.y - this.y);

@@ -309,14 +309,20 @@ function gameLoop() {
     // Nemo 업데이트 (플랫폼 업데이트 및 Nemo 이동)
     const enemies = nemos;
     nemos.forEach(nemo => nemo.update(enemies));
-    squadManager.updateSquads(nemos);
 
-    // 사망한 네모 제거
+    // 사망한 네모 제거 및 선택 목록 정리
     for (let i = nemos.length - 1; i >= 0; i--) {
         if (nemos[i].dead) {
+            const dead = nemos[i];
             nemos.splice(i, 1);
+            const idx = selectedNemos.indexOf(dead);
+            if (idx !== -1) selectedNemos.splice(idx, 1);
         }
     }
+    selectedSquads = selectedSquads.filter(sq =>
+        sq.nemos.some(n => !n.dead)
+    );
+    squadManager.updateSquads(nemos);
 
     // 고스트 네모 위치 갱신
     if (ghostNemo) {
