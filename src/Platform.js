@@ -316,12 +316,9 @@ class AttackPlatform extends Platform {
             }
         }
 
-        // 범위 내 타겟이 없거나 사망했으면 남아있는 이펙트 제거
-        if (!this.parent.nearestEnemy || this.parent.nearestEnemy.dead ||
-            Math.hypot(this.parent.nearestEnemy.x - this.x,
-                      this.parent.nearestEnemy.y - this.y) > this.attackRange) {
-            this.effects = [];
-        }
+
+        // 타겟이 범위를 벗어났거나 사망한 경우에도 이미 생성된 이펙트는
+        // 자연스럽게 사라지도록 남겨둔다. 단, 신규 효과는 생성되지 않는다.
 
         // 이펙트 업데이트
         this.effects = this.effects.filter(e => {
