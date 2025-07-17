@@ -245,11 +245,19 @@ class AttackPlatform extends Platform {
                 }
             }
 
-            let targetAngle;
             if (this.parent.nearestEnemy) {
                 const dx = this.parent.nearestEnemy.x - this.parent.x;
                 const dy = this.parent.nearestEnemy.y - this.parent.y;
-                targetAngle = Math.atan2(dy, dx);
+                const targetAngle = Math.atan2(dy, dx);
+
+                let angleDiff = targetAngle - this.angle;
+                angleDiff = ((angleDiff + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
+                this.mode2 = Math.abs(angleDiff) < Math.PI / 30 ? "attackOn" : "idle";
+                this.angle += angleDiff * 0.1;
+                this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
+                    + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
+                this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
+                    + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
             } else {
                 this.angle = this.parent.angle;
                 this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
@@ -257,17 +265,7 @@ class AttackPlatform extends Platform {
                 this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
                     + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
                 this.mode2 = "idle";
-                return;
             }
-
-            let angleDiff = targetAngle - this.angle;
-            angleDiff = ((angleDiff + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
-            this.mode2 = Math.abs(angleDiff) < Math.PI / 30 ? "attackOn" : "idle";
-            this.angle += angleDiff * 0.1;
-            this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
-                + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
-            this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
-                + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
         } else {
             // 고정 위치 플랫폼(army 다수)
             const baseAngle = this.parent.angle + this.slotAngle;
