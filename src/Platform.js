@@ -99,7 +99,11 @@ class MovePlatform extends Platform {
             const dy = this.destination.y - this.y;
             const dist = Math.hypot(dx, dy);
             if (dist < 5) {
-                // 목표 지점에 거의 도달하면 복귀 모드로 전환
+                // 목표 지점 도달 시 네모를 정확히 위치시키고 정지
+                this.parent.x = this.destination.x;
+                this.parent.y = this.destination.y;
+                this.parent.destination = null;
+                this.parent.moveVector = { x: 0, y: 0 };
                 this.destination = null;
                 this.mode = "return";
             } else {
@@ -117,7 +121,7 @@ class MovePlatform extends Platform {
         }
 
         // 네모 이동: currentDistance가 기본거리보다 클 경우
-        if (this.currentDistance > this.baseDistance) { // 네모 이동
+        if (this.currentDistance > this.baseDistance && this.parent.destination) { // 네모 이동
             const moveMagnitude = (this.currentDistance - this.baseDistance) * this.parent.maxSpeed / 50;
             const pullAngle = Math.atan2(this.y - this.parent.y, this.x - this.parent.x);
             this.parent.moveVector = {

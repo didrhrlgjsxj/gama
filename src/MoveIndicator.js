@@ -1,0 +1,40 @@
+class MoveIndicator {
+    constructor(x, y, size = 40, duration = 20) {
+        this.x = x;
+        this.y = y;
+        this.size = size;
+        this.duration = duration;
+        this.age = 0;
+    }
+
+    update() {
+        this.age++;
+    }
+
+    draw(ctx) {
+        const progress = this.age / this.duration;
+        const alpha = 1 - progress;
+        const offset = this.size * (1 - progress);
+        ctx.save();
+        ctx.strokeStyle = 'green';
+        ctx.lineWidth = 3;
+        ctx.globalAlpha = alpha;
+        ctx.beginPath();
+        ctx.moveTo(this.x - offset, this.y);
+        ctx.lineTo(this.x - offset / 2, this.y);
+        ctx.moveTo(this.x + offset, this.y);
+        ctx.lineTo(this.x + offset / 2, this.y);
+        ctx.moveTo(this.x, this.y - offset);
+        ctx.lineTo(this.x, this.y - offset / 2);
+        ctx.moveTo(this.x, this.y + offset);
+        ctx.lineTo(this.x, this.y + offset / 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    isDone() {
+        return this.age >= this.duration;
+    }
+}
+
+export default MoveIndicator;

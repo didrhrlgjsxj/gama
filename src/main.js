@@ -2,6 +2,7 @@
 import Nemo from './Nemo.js';  // Nemo.js에서 Nemo 클래스를 가져옵니다.
 import Grid from './Grid.js';
 import { NemoSquadManager } from './NemoSquadManager.js';
+import MoveIndicator from './MoveIndicator.js';
 
 
 // Canvas 및 Context 설정
@@ -88,6 +89,7 @@ let selectionStart = null;
 let selectionRect = null;
 let isMoveDragging = false;
 let moveRect = null;
+const moveIndicators = [];
 
 function getAllSelectedNemos() {
     const set = new Set(selectedNemos);
@@ -258,9 +260,13 @@ canvas.addEventListener("mouseup", (e) => {
                     const x = minX + (width * (col + 0.5)) / cols;
                     const y = minY + (height * (row + 0.5)) / rows;
                     targets[i].setDestination(x, y);
+                    moveIndicators.push(new MoveIndicator(x, y));
                 }
             } else {
-                targets.forEach(n => n.setDestination(pos.x, pos.y));
+                targets.forEach(n => {
+                    n.setDestination(pos.x, pos.y);
+                    moveIndicators.push(new MoveIndicator(pos.x, pos.y));
+                });
             }
         } else {
             const minX = Math.min(moveRect.x1, moveRect.x2);
@@ -276,6 +282,7 @@ canvas.addEventListener("mouseup", (e) => {
                 const x = minX + width * (col + 0.5) / cols;
                 const y = minY + height * (row + 0.5) / rows;
                 targets[i].setDestination(x, y);
+                moveIndicators.push(new MoveIndicator(x, y));
             }
         }
         moveRect = null;
@@ -337,6 +344,13 @@ function gameLoop() {
 
     // Nemo 객체들을 배경 위에 그리기
     nemos.forEach(nemo => nemo.draw(ctx));
+    moveIndicators.forEach(ind => {
+        ind.update();
+        ind.draw(ctx);
+    });
+    for (let i = moveIndicators.length - 1; i >= 0; i--) {
+        if (moveIndicators[i].isDone()) moveIndicators.splice(i, 1);
+    }
     if (ghostNemo) ghostNemo.draw(ctx);
     if (selectionRect) {
         ctx.strokeStyle = 'rgba(0,255,0,0.5)';
