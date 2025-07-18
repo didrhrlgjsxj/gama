@@ -85,6 +85,7 @@ class Nemo {
         this.unitType = unitType;
         this.armyType = armyType;
         this.role = role;
+        this.squad = null; // reference to NemoSquad
 
         this.hp = 20;
         this.shieldMaxHp = hasShield ? 3 : 0;
@@ -190,7 +191,12 @@ class Nemo {
             }
         };
 
-        this.startAttackMove = (targets = [], pos = null) => {
+        this.startAttackMove = (targets = [], pos = null, propagate = true) => {
+            if (propagate && this.squad) {
+                this.squad.nemos.forEach(n => {
+                    if (n !== this) n.startAttackMove(targets, pos, false);
+                });
+            }
             this.attackMove = true;
             this.attackTargets = targets;
             this.attackMovePos = pos;
@@ -268,7 +274,8 @@ class Nemo {
                 const dy = nearest.y - this.y;
                 const dist = Math.hypot(dx, dy);
                 this.targetAngle = Math.atan2(dy, dx);
-                if (dist > this.maxAttackRange) {
+                const rangeMargin = 5;
+                if (dist > this.maxAttackRange - rangeMargin) {
                     this.setDestination(nearest.x, nearest.y);
                 } else {
                     this.destination = null;

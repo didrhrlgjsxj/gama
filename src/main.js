@@ -127,9 +127,11 @@ function enemyNemoAt(pos, myTeam) {
 function enemySquadAt(pos, myTeam) {
     for (const sq of squadManager.squads) {
         if (sq.team === myTeam) continue;
-        const b = sq.bounds;
-        if (pos.x >= b.x && pos.x <= b.x + b.w && pos.y >= b.y && pos.y <= b.y + b.h) {
-            return sq;
+        for (const n of sq.nemos) {
+            const half = n.size / 2 + 5; // small margin
+            if (pos.x >= n.x - half && pos.x <= n.x + half && pos.y >= n.y - half && pos.y <= n.y + half) {
+                return sq;
+            }
         }
     }
     return null;

@@ -93,6 +93,7 @@ class NemoSquadManager {
                 }
             }
             const squad = new NemoSquad(squadNemos, nemo.team, this.cellSize);
+            squad.nemos.forEach(n => n.squad = squad);
             squad.idString = squad.nemos.map(n => n.id).sort((a,b) => a-b).join(',');
             const old = oldSquads.find(s => s.idString === squad.idString);
             if (old) squad.selected = old.selected;
