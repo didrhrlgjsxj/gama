@@ -16,7 +16,7 @@ class MoveIndicator {
         const alpha = 1 - progress;
         const offset = this.size * (1 - progress);
         ctx.save();
-        ctx.strokeStyle = 'green';
+        ctx.strokeStyle = 'red';
         ctx.lineWidth = 3;
         ctx.globalAlpha = alpha;
         ctx.beginPath();

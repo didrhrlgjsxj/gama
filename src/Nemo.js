@@ -97,6 +97,9 @@ class Nemo {
         this.attackTargets = [];
         this.attackMovePos = null;
 
+        // 적을 감지하는 범위 (10 그리드)
+        this.recognitionRange = mainGrid.cellSize * 10;
+
         // unit 타입일 경우 회전 및 이동을 직접 제어하기 위한 프로퍼티
         this.targetAngle = 0;
         this.rotationSpeed = Math.PI / (0.4 * 60); // 뒤돌기 약 0.4초 기준
@@ -224,7 +227,7 @@ class Nemo {
     // 적을 찾는 함수
     findNearestEnemy(enemies) {
         let nearestEnemy = null;
-        let minDistance = 500;
+        let minDistance = this.recognitionRange;
 
         enemies.forEach(enemy => {
             if (enemy !== this && enemy.team !== this.team) {  // 같은 팀이 아닌 경우만 적으로 간주
@@ -286,10 +289,16 @@ class Nemo {
         } else {
             // 일반 상태에서는 주변의 가장 가까운 적을 추적
             this.nearestEnemy = this.findNearestEnemy(enemies);
-            if (this.unitType === "unit" && this.nearestEnemy) {
+            if (this.nearestEnemy) {
                 const dx = this.nearestEnemy.x - this.x;
                 const dy = this.nearestEnemy.y - this.y;
-                this.targetAngle = Math.atan2(dy, dx);
+                const dist = Math.hypot(dx, dy);
+                if (!this.attackMove && dist <= this.recognitionRange) {
+                    this.startAttackMove([this.nearestEnemy], {x: this.nearestEnemy.x, y: this.nearestEnemy.y});
+                }
+                if (this.unitType === "unit") {
+                    this.targetAngle = Math.atan2(dy, dx);
+                }
             }
         }
 
