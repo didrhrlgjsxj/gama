@@ -356,6 +356,28 @@ canvas.addEventListener("contextmenu", (e) => {
     e.preventDefault();
 });
 
+function resolveCollisions() {
+    for (let i = 0; i < nemos.length; i++) {
+        for (let j = i + 1; j < nemos.length; j++) {
+            const a = nemos[i];
+            const b = nemos[j];
+            const minDist = (a.size / 2) + (b.size / 2);
+            const dx = b.x - a.x;
+            const dy = b.y - a.y;
+            const dist = Math.hypot(dx, dy);
+            if (dist > 0 && dist < minDist) {
+                const overlap = minDist - dist;
+                const nx = dx / dist;
+                const ny = dy / dist;
+                a.x -= nx * overlap / 2;
+                a.y -= ny * overlap / 2;
+                b.x += nx * overlap / 2;
+                b.y += ny * overlap / 2;
+            }
+        }
+    }
+}
+
 // 게임 루프
 function gameLoop() {
     // 카메라 업데이트 (마우스 위치에 따라 이동)
@@ -371,6 +393,7 @@ function gameLoop() {
     // Nemo 업데이트 (플랫폼 업데이트 및 Nemo 이동)
     const enemies = nemos;
     nemos.forEach(nemo => nemo.update(enemies));
+    resolveCollisions();
 
     // 사망한 네모 제거 및 선택 목록 정리
     for (let i = nemos.length - 1; i >= 0; i--) {

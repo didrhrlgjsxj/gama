@@ -89,7 +89,7 @@ class Nemo {
         this.hp = 20;
         this.shieldMaxHp = hasShield ? 3 : 0;
         this.shieldHp = this.shieldMaxHp;
-        this.shieldStrength = hasShield ? 1 : 0;//쉴드 강도 (최종 피해 = 받는 피해 - 강도)
+        this.shieldStrength = 1; //쉴드 강도 (최종 피해 = 받는 피해 - 강도)
         this.dead = false;      // 사망 여부
         this.selected = false;  // 선택 여부
         this.destination = null; // 이동 목표 위치
@@ -135,6 +135,14 @@ class Nemo {
                     attackIndex++;
                     return new AttackPlatform(this, angle, false);
                 }
+            }
+        });
+
+        // 가장 긴 사정거리 저장
+        this.maxAttackRange = 0;
+        this.platforms.forEach(p => {
+            if (p instanceof AttackPlatform && p.attackRange > this.maxAttackRange) {
+                this.maxAttackRange = p.attackRange;
             }
         });
 
@@ -240,23 +248,48 @@ class Nemo {
         // 현재 시점의 모든 적 목록 저장 (AttackPlatform 등에서 사용)
         this.allEnemies = enemies;
 
-        // 주변의 적을 찾아 nearestEnemy에 저장
-        this.nearestEnemy = this.findNearestEnemy(enemies);
-
-        if (this.unitType === "unit" && this.nearestEnemy) {
-            // 적을 향해 바라보도록 목표 각도를 설정
-            const dx = this.nearestEnemy.x - this.x;
-            const dy = this.nearestEnemy.y - this.y;
-            this.targetAngle = Math.atan2(dy, dx);
-        }
-
+        // 공격 명령이 내려진 경우 우선 공격 대상 목록에서 가장 가까운 적을 찾는다
         if (this.attackMove) {
             this.attackTargets = this.attackTargets.filter(t => !t.dead);
-            let target = this.attackTargets.length > 0 ? this.attackTargets[0] : null;
-            if (target) {
-                this.setDestination(target.x, target.y);
+            let nearest = null;
+            let minDist = Infinity;
+            this.attackTargets.forEach(t => {
+                const d = Math.hypot(t.x - this.x, t.y - this.y);
+                if (d < minDist) { minDist = d; nearest = t; }
+            });
+            this.nearestEnemy = nearest;
+            if (nearest) {
+                // 목표까지 이동하되 사정거리에 도달하면 멈춘다
+                const dx = nearest.x - this.x;
+                const dy = nearest.y - this.y;
+                const dist = Math.hypot(dx, dy);
+                this.targetAngle = Math.atan2(dy, dx);
+                if (dist > this.maxAttackRange) {
+                    this.setDestination(nearest.x, nearest.y);
+                } else {
+                    this.destination = null;
+                }
             } else if (this.attackMovePos) {
-                this.setDestination(this.attackMovePos.x, this.attackMovePos.y);
+                // 지정 위치로 이동
+                const dx = this.attackMovePos.x - this.x;
+                const dy = this.attackMovePos.y - this.y;
+                const dist = Math.hypot(dx, dy);
+                this.targetAngle = Math.atan2(dy, dx);
+                if (dist > 5) {
+                    this.setDestination(this.attackMovePos.x, this.attackMovePos.y);
+                } else {
+                    this.clearAttackMove();
+                }
+            } else {
+                this.clearAttackMove();
+            }
+        } else {
+            // 일반 상태에서는 주변의 가장 가까운 적을 추적
+            this.nearestEnemy = this.findNearestEnemy(enemies);
+            if (this.unitType === "unit" && this.nearestEnemy) {
+                const dx = this.nearestEnemy.x - this.x;
+                const dy = this.nearestEnemy.y - this.y;
+                this.targetAngle = Math.atan2(dy, dx);
             }
         }
 
@@ -371,10 +404,10 @@ class Nemo {
         // 플랫폼 본체와 총알을 먼저 그린다
         this.platforms.forEach(platform => platform.draw(ctx));
 
-        // 가장 가까운 적이 있으면 그려주기
+        // 가장 가까운 적이 있으면 화살표로 표시
         if (this.nearestEnemy) {
-            ctx.strokeStyle = "yellow";
-            ctx.lineWidth = 2;
+            ctx.strokeStyle = this.attackMove ? 'red' : 'yellow';
+            ctx.lineWidth = 4;
             ctx.beginPath();
             ctx.moveTo(this.x, this.y);
             ctx.lineTo(this.nearestEnemy.x, this.nearestEnemy.y);
@@ -392,10 +425,32 @@ class Nemo {
         }
         const img = this.offscreen;
         ctx.drawImage(img, -img.width / 2, -img.height / 2);
-        const sImg = this.shieldCanvas;
-        ctx.globalAlpha = this.shieldHp > 0 ? 0.6 : 0.3;
-        ctx.drawImage(sImg, -sImg.width / 2, -sImg.height / 2);
-        ctx.globalAlpha = 1.0;
+
+        // 쉴드 두께는 남은 쉴드 비율에 따라 달라진다
+        if (this.shieldMaxHp > 0) {
+            const ratio = Math.max(0, this.shieldHp) / this.shieldMaxHp;
+            const base = 2;
+            const width = base + ratio * 4; // 2~6 사이
+            ctx.globalAlpha = this.shieldHp > 0 ? 0.6 : 0.3;
+            ctx.strokeStyle = 'skyblue';
+            ctx.lineWidth = width;
+            ctx.beginPath();
+            if (this.unitType === 'unit') {
+                const h = this.size / 2 + 3;
+                ctx.moveTo(0, -h);
+                ctx.lineTo(h * 0.6, -h * 0.3);
+                ctx.lineTo(h, 0);
+                ctx.lineTo(h * 0.6, h);
+                ctx.lineTo(-h * 0.6, h);
+                ctx.lineTo(-h, 0);
+                ctx.lineTo(-h * 0.6, -h * 0.3);
+                ctx.closePath();
+            } else {
+                ctx.arc(0, 0, this.size / 2 + 3, 0, Math.PI * 2);
+            }
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+        }
         ctx.restore();
 
         // 네모가 그려진 후 이펙트를 전역 좌표계에서 그려 상위에 보이도록 한다
