@@ -90,17 +90,12 @@ let selectionRect = null;
 let isMoveDragging = false;
 let moveRect = null;
 const moveIndicators = [];
-let attackKey = false;
+let attackKey = false; // 공격 명령 토글 상태
 
 window.addEventListener('keydown', (e) => {
     if (e.key === 'a' || e.key === 'A') {
-        attackKey = true;
-    }
-});
-
-window.addEventListener('keyup', (e) => {
-    if (e.key === 'a' || e.key === 'A') {
-        attackKey = false;
+        attackKey = !attackKey;
+        e.preventDefault();
     }
 });
 
@@ -165,17 +160,20 @@ blueArmyBtn.addEventListener("click", () => createGhost("army", "blue", true));
 canvas.addEventListener("mousedown", (e) => {
     const pos = worldMouse();
     const selectedAny = selectedNemos.length > 0 || selectedSquads.length > 0;
-    if (attackKey && selectedAny && e.button === 0) {
-        const team = selectedNemos[0] ? selectedNemos[0].team : (selectedSquads[0] ? selectedSquads[0].team : null);
-        const enemyN = enemyNemoAt(pos, team);
-        const enemyS = enemySquadAt(pos, team);
-        if (enemyN) {
-            issueAttackMove([enemyN], {x: enemyN.x, y: enemyN.y});
-        } else if (enemyS) {
-            issueAttackMove(enemyS.nemos, pos);
-        } else {
-            issueAttackMove([], pos);
+    if (attackKey && e.button === 0) {
+        if (selectedAny) {
+            const team = selectedNemos[0] ? selectedNemos[0].team : (selectedSquads[0] ? selectedSquads[0].team : null);
+            const enemyN = enemyNemoAt(pos, team);
+            const enemyS = enemySquadAt(pos, team);
+            if (enemyN) {
+                issueAttackMove([enemyN], {x: enemyN.x, y: enemyN.y});
+            } else if (enemyS) {
+                issueAttackMove(enemyS.nemos, pos);
+            } else {
+                issueAttackMove([], pos);
+            }
         }
+        attackKey = false;
         return;
     }
     if (e.button === 0) {
@@ -321,11 +319,13 @@ canvas.addEventListener("mouseup", (e) => {
                     const row = Math.floor(i / cols);
                     const x = minX + (width * (col + 0.5)) / cols;
                     const y = minY + (height * (row + 0.5)) / rows;
+                    targets[i].clearAttackMove();
                     targets[i].setDestination(x, y);
                     moveIndicators.push(new MoveIndicator(x, y));
                 }
             } else {
                 targets.forEach(n => {
+                    n.clearAttackMove();
                     n.setDestination(pos.x, pos.y);
                     moveIndicators.push(new MoveIndicator(pos.x, pos.y));
                 });
@@ -343,6 +343,7 @@ canvas.addEventListener("mouseup", (e) => {
                 const row = Math.floor(i / cols);
                 const x = minX + width * (col + 0.5) / cols;
                 const y = minY + height * (row + 0.5) / rows;
+                targets[i].clearAttackMove();
                 targets[i].setDestination(x, y);
                 moveIndicators.push(new MoveIndicator(x, y));
             }
@@ -463,6 +464,16 @@ function gameLoop() {
     }
 
     ctx.restore();
+
+    if (attackKey) {
+        ctx.save();
+        ctx.strokeStyle = 'red';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, 10, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
 
     requestAnimationFrame(gameLoop);
 }
