@@ -86,10 +86,10 @@ class Nemo {
         this.armyType = armyType;
         this.role = role;
 
-        this.hp = 10;
+        this.hp = 20;
         this.shieldMaxHp = 3;
         this.shieldHp = this.shieldMaxHp;
-        this.shieldStrength = 1;
+        this.shieldStrength = 1;//쉴드 강도 (최종 피해 = 받는 피해 - 강도)
         this.dead = false;      // 사망 여부
         this.selected = false;  // 선택 여부
         this.destination = null; // 이동 목표 위치
@@ -311,10 +311,12 @@ class Nemo {
     takeDamage(amount) {
         const dmg = Math.max(0, amount - this.shieldStrength);
         if (this.shieldHp > 0) {
-            this.shieldHp -= dmg;
-            if (this.shieldHp < 0) {
-                this.hp += this.shieldHp; // apply remaining damage
-                this.shieldHp = 0;
+            if(dmg > 0){
+                this.shieldHp -= dmg;
+                if (this.shieldHp < 0) {
+                    this.hp += this.shieldHp; // apply remaining damage
+                    this.shieldHp = 0;
+                }
             }
         } else {
             this.hp -= dmg;
