@@ -4,6 +4,40 @@ import { mainGrid } from './main.js';  // mainGrid를 가져옵니다.
 
 class Nemo {
     static nextId = 1;
+    static canvasCache = {};
+
+    static createOffscreen(unitType, color, size) {
+        const key = `${unitType}_${color}`;
+        if (!this.canvasCache[key]) {
+            const canvas = document.createElement('canvas');
+            const margin = 6;
+            canvas.width = size + margin;
+            canvas.height = size + margin;
+            const ctx = canvas.getContext('2d');
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            if (unitType === 'unit') {
+                const h = size / 2;
+                ctx.beginPath();
+                ctx.moveTo(0, -h);
+                ctx.lineTo(h * 0.6, -h * 0.3);
+                ctx.lineTo(h, 0);
+                ctx.lineTo(h * 0.6, h);
+                ctx.lineTo(-h * 0.6, h);
+                ctx.lineTo(-h, 0);
+                ctx.lineTo(-h * 0.6, -h * 0.3);
+                ctx.closePath();
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            this.canvasCache[key] = canvas;
+        }
+        return this.canvasCache[key];
+    }
     constructor(x, y, team = "blue", platformTypes = ["move"], unitType = "army") {
         this.id = Nemo.nextId++;
         this.x = x;
@@ -36,6 +70,9 @@ class Nemo {
             this.fillColor = "white";
             this.borderColor = "darkblue";
         }
+
+        // 오프스크린 캔버스 생성
+        this.offscreen = Nemo.createOffscreen(this.unitType, this.borderColor, this.size);
 
         // 플랫폼 타입을 파라미터로 받아서 해당 타입에 맞는 플랫폼을 생성
         const attackCount = platformTypes.filter(t => t === "attack").length;
@@ -251,35 +288,17 @@ class Nemo {
             ctx.stroke();
         }
 
-        // Nemo 그리기 - 내부를 채우지 않고 윤곽선만 그린다
-        ctx.strokeStyle = this.borderColor;
-        ctx.lineWidth = 3;
         ctx.save();
         if (this.selected) {
             ctx.shadowColor = this.borderColor;
             ctx.shadowBlur = 10;
         }
         ctx.translate(this.x, this.y);
-        if (this.unitType === "unit") {
+        if (this.unitType === 'unit') {
             ctx.rotate(this.angle + Math.PI / 2);
-            const h = this.size / 2;
-            // Draw a directional polygon resembling a simple armored unit
-            ctx.beginPath();
-            ctx.moveTo(0, -h); // front tip
-            ctx.lineTo(h * 0.6, -h * 0.3);
-            ctx.lineTo(h, 0);
-            ctx.lineTo(h * 0.6, h);
-            ctx.lineTo(-h * 0.6, h);
-            ctx.lineTo(-h, 0);
-            ctx.lineTo(-h * 0.6, -h * 0.3);
-            ctx.closePath();
-            ctx.stroke();
-        } else {
-            ctx.beginPath();
-            ctx.arc(0, 0, this.size / 2, 0, Math.PI * 2);
-            ctx.stroke();
         }
-
+        const img = this.offscreen;
+        ctx.drawImage(img, -img.width / 2, -img.height / 2);
         ctx.restore();
 
         // 네모가 그려진 후 이펙트를 전역 좌표계에서 그려 상위에 보이도록 한다

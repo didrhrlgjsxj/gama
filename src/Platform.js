@@ -87,6 +87,15 @@ class MovePlatform extends Platform {
         this.height = 10;
         this.moveMagnitude = 0; // moveVector 크기를 저장할 프로퍼티 추가
         this.destination = null; // 이동 목표 지점
+        if (!MovePlatform.offCanvas) {
+            const c = document.createElement('canvas');
+            c.width = this.width;
+            c.height = this.height;
+            const ictx = c.getContext('2d');
+            ictx.fillStyle = 'black';
+            ictx.fillRect(0, 0, this.width, this.height);
+            MovePlatform.offCanvas = c;
+        }
     }
 
     update() {
@@ -149,7 +158,6 @@ class MovePlatform extends Platform {
         }
 
 
-        ctx.fillStyle = "black"; //플랫폼 그리기
         ctx.save();
         ctx.translate(this.x, this.y);
         const angleToNemo = Math.atan2(
@@ -157,10 +165,12 @@ class MovePlatform extends Platform {
             this.parent.x - this.x
         );
         ctx.rotate(angleToNemo + Math.PI/2); // 항상 Nemo를 향하도록 회전
-        ctx.fillRect(-this.width/2, -this.height/2, this.width, this.height);
+        ctx.drawImage(MovePlatform.offCanvas, -this.width/2, -this.height/2);
         ctx.restore();
     }
 }
+
+MovePlatform.offCanvas = null;
 
 
 // AttackPlatform은 Platform을 상속받아 공격 관련 로직을 추가합니다.
@@ -195,19 +205,16 @@ class AttackPlatform extends Platform {
         // 발사 반동 효과를 위한 오프셋 값
         this.recoilOffset = 0;
 
-        // 팀에 따른 이미지 로드
-        const prefix = this.parent.team === 'red' ? 'Red' : 'Blue';
-        this.inImage = new Image();
-        this.outImage = new Image();
-        this.inImage.src = `images/${prefix}_in_gun.png`;
-        this.outImage.src = `images/${prefix}_out_gun.png`;
+        // 팀 색상에 따른 오프스크린 무기 이미지 생성
+        this.gunCanvas = AttackPlatform.getGunCanvas(this.parent.team);
+        this.gunLength = this.gunCanvas.width;
 
         // 고정 배치 각도(라디안). null이면 기존 동작 유지
         this.slotAngle = slotAngle;
     }
 
     getMuzzlePosition() {
-        const len = (this.inImage && this.inImage.width ? this.inImage.width : 0) / 2;
+        const len = this.gunLength / 2;
         return {
             x: this.x + Math.cos(this.angle) * (len + this.recoilOffset),
             y: this.y + Math.sin(this.angle) * (len + this.recoilOffset)
@@ -337,9 +344,7 @@ class AttackPlatform extends Platform {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.angle);
-        if (this.inImage.complete) {
-            ctx.drawImage(this.inImage, -this.inImage.width / 2 + this.recoilOffset, -this.inImage.height / 2);
-        }
+        ctx.drawImage(this.gunCanvas, -this.gunCanvas.width / 2 + this.recoilOffset, -this.gunCanvas.height / 2);
         ctx.restore();
     }
 
@@ -347,5 +352,32 @@ class AttackPlatform extends Platform {
         this.effects.forEach(e => e.draw(ctx));
     }
 }
+
+AttackPlatform.gunCache = {};
+AttackPlatform.getGunCanvas = function(team) {
+    const key = team;
+    if (!this.gunCache[key]) {
+        const canvas = document.createElement('canvas');
+        const width = 40;
+        const height = 16;
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        const color = team === 'red' ? 'darkred' : 'darkblue';
+        ctx.fillStyle = color;
+        ctx.strokeStyle = 'black';
+        ctx.lineWidth = 2;
+        const bodyW = width * 0.6;
+        const bodyH = height * 0.6;
+        ctx.fillRect(0, (height - bodyH) / 2, bodyW, bodyH);
+        ctx.strokeRect(0, (height - bodyH) / 2, bodyW, bodyH);
+        const barrelW = width * 0.4;
+        const barrelH = height * 0.25;
+        ctx.fillRect(bodyW, (height - barrelH) / 2, barrelW, barrelH);
+        ctx.strokeRect(bodyW, (height - barrelH) / 2, barrelW, barrelH);
+        this.gunCache[key] = canvas;
+    }
+    return this.gunCache[key];
+};
 
 export { Platform, MovePlatform, AttackPlatform };
