@@ -113,7 +113,7 @@ function createGhost(type, team) {
     } else {
         platformTypes = ["attack"];
     }
-    ghostNemo = new Nemo(x, y, team, platformTypes, type);
+    ghostNemo = new Nemo(x, y, team, platformTypes, type, "sqaudio", "ranged");
 }
 
 blueUnitBtn.addEventListener("click", () => createGhost("unit", "blue"));

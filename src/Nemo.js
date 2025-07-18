@@ -5,6 +5,7 @@ import { mainGrid } from './main.js';  // mainGrid를 가져옵니다.
 class Nemo {
     static nextId = 1;
     static canvasCache = {};
+    static shieldCache = {};
 
     static createOffscreen(unitType, color, size) {
         const key = `${unitType}_${color}`;
@@ -38,7 +39,40 @@ class Nemo {
         }
         return this.canvasCache[key];
     }
-    constructor(x, y, team = "blue", platformTypes = ["move"], unitType = "army") {
+
+    static createShieldCanvas(unitType, size) {
+        const key = `shield_${unitType}_${size}`;
+        if (!this.shieldCache[key]) {
+            const canvas = document.createElement('canvas');
+            const margin = 10;
+            canvas.width = size + margin;
+            canvas.height = size + margin;
+            const ctx = canvas.getContext('2d');
+            ctx.strokeStyle = 'skyblue';
+            ctx.lineWidth = 4;
+            ctx.translate(canvas.width / 2, canvas.height / 2);
+            if (unitType === 'unit') {
+                const h = size / 2;
+                ctx.beginPath();
+                ctx.moveTo(0, -h);
+                ctx.lineTo(h * 0.6, -h * 0.3);
+                ctx.lineTo(h, 0);
+                ctx.lineTo(h * 0.6, h);
+                ctx.lineTo(-h * 0.6, h);
+                ctx.lineTo(-h, 0);
+                ctx.lineTo(-h * 0.6, -h * 0.3);
+                ctx.closePath();
+                ctx.stroke();
+            } else {
+                ctx.beginPath();
+                ctx.arc(0, 0, size / 2, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            this.shieldCache[key] = canvas;
+        }
+        return this.shieldCache[key];
+    }
+    constructor(x, y, team = "blue", platformTypes = ["move"], unitType = "army", armyType = "sqaudio", role = "ranged") {
         this.id = Nemo.nextId++;
         this.x = x;
         this.y = y;
@@ -49,7 +83,13 @@ class Nemo {
         this.team = team;
         this.moveVector = 0;
         this.unitType = unitType;
+        this.armyType = armyType;
+        this.role = role;
+
         this.hp = 10;
+        this.shieldMaxHp = 3;
+        this.shieldHp = this.shieldMaxHp;
+        this.shieldStrength = 1;
         this.dead = false;      // 사망 여부
         this.selected = false;  // 선택 여부
         this.destination = null; // 이동 목표 위치
@@ -73,6 +113,7 @@ class Nemo {
 
         // 오프스크린 캔버스 생성
         this.offscreen = Nemo.createOffscreen(this.unitType, this.borderColor, this.size);
+        this.shieldCanvas = Nemo.createShieldCanvas(this.unitType, this.size + 6);
 
         // 플랫폼 타입을 파라미터로 받아서 해당 타입에 맞는 플랫폼을 생성
         const attackCount = platformTypes.filter(t => t === "attack").length;
@@ -267,6 +308,19 @@ class Nemo {
         }
     }
 
+    takeDamage(amount) {
+        const dmg = Math.max(0, amount - this.shieldStrength);
+        if (this.shieldHp > 0) {
+            this.shieldHp -= dmg;
+            if (this.shieldHp < 0) {
+                this.hp += this.shieldHp; // apply remaining damage
+                this.shieldHp = 0;
+            }
+        } else {
+            this.hp -= dmg;
+        }
+    }
+
     // 네모가 죽을 때 호출되는 함수
     destroyed() {
         console.log(`${this.team} 팀의 네모가 사망했습니다!`);
@@ -299,6 +353,10 @@ class Nemo {
         }
         const img = this.offscreen;
         ctx.drawImage(img, -img.width / 2, -img.height / 2);
+        const sImg = this.shieldCanvas;
+        ctx.globalAlpha = this.shieldHp > 0 ? 0.6 : 0.3;
+        ctx.drawImage(sImg, -sImg.width / 2, -sImg.height / 2);
+        ctx.globalAlpha = 1.0;
         ctx.restore();
 
         // 네모가 그려진 후 이펙트를 전역 좌표계에서 그려 상위에 보이도록 한다

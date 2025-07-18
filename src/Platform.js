@@ -302,8 +302,8 @@ class AttackPlatform extends Platform {
             const dist = Math.hypot(dx, dy);
             if (dist <= this.attackRange && (now - this.lastShot) >= 1000 / this.attackSpeed) {
                 const target = this.parent.nearestEnemy;
-                if (target.team !== this.parent.team) {
-                    target.hp -= this.attackPower;
+                if (target.team !== this.parent.team && target.takeDamage) {
+                    target.takeDamage(this.attackPower);
                 }
                 const hitAngle = Math.atan2(target.y - this.y, target.x - this.x);
                 const perp = hitAngle + Math.PI / 2;
