@@ -72,7 +72,7 @@ class Nemo {
         }
         return this.shieldCache[key];
     }
-    constructor(x, y, team = "blue", platformTypes = ["move"], unitType = "army", armyType = "sqaudio", role = "ranged") {
+    constructor(x, y, team = "blue", platformTypes = ["move"], unitType = "army", armyType = "sqaudio", role = "ranged", hasShield = true) {
         this.id = Nemo.nextId++;
         this.x = x;
         this.y = y;
@@ -87,12 +87,15 @@ class Nemo {
         this.role = role;
 
         this.hp = 20;
-        this.shieldMaxHp = 3;
+        this.shieldMaxHp = hasShield ? 3 : 0;
         this.shieldHp = this.shieldMaxHp;
-        this.shieldStrength = 1;//쉴드 강도 (최종 피해 = 받는 피해 - 강도)
+        this.shieldStrength = hasShield ? 1 : 0;//쉴드 강도 (최종 피해 = 받는 피해 - 강도)
         this.dead = false;      // 사망 여부
         this.selected = false;  // 선택 여부
         this.destination = null; // 이동 목표 위치
+        this.attackMove = false;
+        this.attackTargets = [];
+        this.attackMovePos = null;
 
         // unit 타입일 경우 회전 및 이동을 직접 제어하기 위한 프로퍼티
         this.targetAngle = 0;
@@ -176,6 +179,24 @@ class Nemo {
             }
         };
 
+        this.startAttackMove = (targets = [], pos = null) => {
+            this.attackMove = true;
+            this.attackTargets = targets;
+            this.attackMovePos = pos;
+            if (targets.length > 0) {
+                const t = targets[0];
+                this.setDestination(t.x, t.y);
+            } else if (pos) {
+                this.setDestination(pos.x, pos.y);
+            }
+        };
+
+        this.clearAttackMove = () => {
+            this.attackMove = false;
+            this.attackTargets = [];
+            this.attackMovePos = null;
+        };
+
         this.rotateTowards = (angle) => {
             let diff = angle - this.angle;
             diff = ((diff + Math.PI) % (2 * Math.PI)) - Math.PI;
@@ -229,6 +250,16 @@ class Nemo {
             this.targetAngle = Math.atan2(dy, dx);
         }
 
+        if (this.attackMove) {
+            this.attackTargets = this.attackTargets.filter(t => !t.dead);
+            let target = this.attackTargets.length > 0 ? this.attackTargets[0] : null;
+            if (target) {
+                this.setDestination(target.x, target.y);
+            } else if (this.attackMovePos) {
+                this.setDestination(this.attackMovePos.x, this.attackMovePos.y);
+            }
+        }
+
         if (this.destination && this.unitType !== "army") {
             const dx = this.destination.x - this.x;
             const dy = this.destination.y - this.y;
@@ -247,6 +278,9 @@ class Nemo {
                 if (moveP) {
                     moveP.destination = null;
                     moveP.mode = "return";
+                }
+                if (this.attackMove && this.attackTargets.length === 0 && !this.attackMovePos) {
+                    this.clearAttackMove();
                 }
             }
         }
@@ -294,6 +328,9 @@ class Nemo {
                     if (moveP) {
                         moveP.destination = null;
                         moveP.mode = "return";
+                    }
+                    if (this.attackMove && this.attackTargets.length === 0 && !this.attackMovePos) {
+                        this.clearAttackMove();
                     }
                 }
             }

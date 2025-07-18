@@ -90,6 +90,19 @@ let selectionRect = null;
 let isMoveDragging = false;
 let moveRect = null;
 const moveIndicators = [];
+let attackKey = false;
+
+window.addEventListener('keydown', (e) => {
+    if (e.key === 'a' || e.key === 'A') {
+        attackKey = true;
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.key === 'a' || e.key === 'A') {
+        attackKey = false;
+    }
+});
 
 function getAllSelectedNemos() {
     const set = new Set(selectedNemos);
@@ -105,7 +118,35 @@ function worldMouse() {
     };
 }
 
-function createGhost(type, team) {
+function enemyNemoAt(pos, myTeam) {
+    for (const n of nemos) {
+        if (n.team === myTeam) continue;
+        if (pos.x >= n.x - n.size / 2 && pos.x <= n.x + n.size / 2 &&
+            pos.y >= n.y - n.size / 2 && pos.y <= n.y + n.size / 2) {
+            return n;
+        }
+    }
+    return null;
+}
+
+function enemySquadAt(pos, myTeam) {
+    for (const sq of squadManager.squads) {
+        if (sq.team === myTeam) continue;
+        const b = sq.bounds;
+        if (pos.x >= b.x && pos.x <= b.x + b.w && pos.y >= b.y && pos.y <= b.y + b.h) {
+            return sq;
+        }
+    }
+    return null;
+}
+
+function issueAttackMove(targets, pos) {
+    const list = getAllSelectedNemos();
+    list.forEach(n => n.startAttackMove(targets, pos));
+    if (pos) moveIndicators.push(new MoveIndicator(pos.x, pos.y));
+}
+
+function createGhost(type, team, hasShield = true) {
     const { x, y } = worldMouse();
     let platformTypes;
     if (type === "army") {
@@ -113,16 +154,30 @@ function createGhost(type, team) {
     } else {
         platformTypes = ["attack"];
     }
-    ghostNemo = new Nemo(x, y, team, platformTypes, type, "sqaudio", "ranged");
+    ghostNemo = new Nemo(x, y, team, platformTypes, type, "sqaudio", "ranged", hasShield);
 }
 
-blueUnitBtn.addEventListener("click", () => createGhost("unit", "blue"));
-blueArmyBtn.addEventListener("click", () => createGhost("army", "blue"));
-redUnitBtn.addEventListener("click", () => createGhost("unit", "red"));
-redArmyBtn.addEventListener("click", () => createGhost("army", "red"));
+redUnitBtn.addEventListener("click", () => createGhost("unit", "red", false));
+redArmyBtn.addEventListener("click", () => createGhost("army", "red", true));
+blueUnitBtn.addEventListener("click", () => createGhost("unit", "blue", false));
+blueArmyBtn.addEventListener("click", () => createGhost("army", "blue", true));
 
 canvas.addEventListener("mousedown", (e) => {
     const pos = worldMouse();
+    const selectedAny = selectedNemos.length > 0 || selectedSquads.length > 0;
+    if (attackKey && selectedAny && e.button === 0) {
+        const team = selectedNemos[0] ? selectedNemos[0].team : (selectedSquads[0] ? selectedSquads[0].team : null);
+        const enemyN = enemyNemoAt(pos, team);
+        const enemyS = enemySquadAt(pos, team);
+        if (enemyN) {
+            issueAttackMove([enemyN], {x: enemyN.x, y: enemyN.y});
+        } else if (enemyS) {
+            issueAttackMove(enemyS.nemos, pos);
+        } else {
+            issueAttackMove([], pos);
+        }
+        return;
+    }
     if (e.button === 0) {
         if (ghostNemo) {
             nemos.push(ghostNemo);
@@ -244,8 +299,15 @@ canvas.addEventListener("mouseup", (e) => {
         const dragW = Math.abs(moveRect.x2 - moveRect.x1);
         const dragH = Math.abs(moveRect.y2 - moveRect.y1);
         const targets = getAllSelectedNemos();
+        const team = targets[0] ? targets[0].team : null;
         if (dragW < 5 && dragH < 5) {
-            if (selectedSquads.length === 1 && selectedNemos.length === 0) {
+            const enemyN = enemyNemoAt(pos, team);
+            const enemyS = enemySquadAt(pos, team);
+            if (enemyN) {
+                issueAttackMove([enemyN], {x: enemyN.x, y: enemyN.y});
+            } else if (enemyS) {
+                issueAttackMove(enemyS.nemos, pos);
+            } else if (selectedSquads.length === 1 && selectedNemos.length === 0) {
                 const squad = selectedSquads[0];
                 const width = squad.bounds.w;
                 const height = squad.bounds.h;
