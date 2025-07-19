@@ -90,11 +90,18 @@ let selectionRect = null;
 let isMoveDragging = false;
 let moveRect = null;
 const moveIndicators = [];
-let attackKey = false; // 공격 명령 토글 상태
+let attackKey = false; // 'A' 키가 눌린 상태 여부
 
 window.addEventListener('keydown', (e) => {
     if (e.key === 'a' || e.key === 'A') {
-        attackKey = !attackKey;
+        attackKey = true;
+        e.preventDefault();
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.key === 'a' || e.key === 'A') {
+        attackKey = false;
         e.preventDefault();
     }
 });
@@ -159,26 +166,17 @@ redArmyBtn.addEventListener("click", () => createGhost("army", "red", true));
 blueUnitBtn.addEventListener("click", () => createGhost("unit", "blue", false));
 blueArmyBtn.addEventListener("click", () => createGhost("army", "blue", true));
 
+let selectionStartedWithSelection = false;
+
 canvas.addEventListener("mousedown", (e) => {
     const pos = worldMouse();
     const selectedAny = selectedNemos.length > 0 || selectedSquads.length > 0;
-    if (attackKey && e.button === 0) {
-        if (selectedAny) {
-            const team = selectedNemos[0] ? selectedNemos[0].team : (selectedSquads[0] ? selectedSquads[0].team : null);
-            const enemyN = enemyNemoAt(pos, team);
-            const enemyS = enemySquadAt(pos, team);
-            if (enemyN) {
-                issueAttackMove([enemyN], {x: enemyN.x, y: enemyN.y});
-            } else if (enemyS) {
-                issueAttackMove(enemyS.nemos, pos);
-            } else {
-                issueAttackMove([], pos);
-            }
-        }
-        attackKey = false;
-        return;
-    }
+
     if (e.button === 0) {
+        if (attackKey && selectedAny) {
+            issueAttackMove([], pos);
+            return;
+        }
         if (ghostNemo) {
             nemos.push(ghostNemo);
             squadManager.updateSquads(nemos);
@@ -187,10 +185,7 @@ canvas.addEventListener("mousedown", (e) => {
             isSelecting = true;
             selectionStart = pos;
             selectionRect = { x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y };
-            selectedNemos.forEach(n => n.selected = false);
-            selectedSquads.forEach(s => s.selected = false);
-            selectedNemos = [];
-            selectedSquads = [];
+            selectionStartedWithSelection = selectedAny;
         }
     }
     if (e.button === 2) {
@@ -226,6 +221,15 @@ canvas.addEventListener("mouseup", (e) => {
 
         // 드래그 거리가 거의 없으면 클릭으로 간주
         if (dragWidth < 5 && dragHeight < 5) {
+            if (selectionStartedWithSelection) {
+                const targets = getAllSelectedNemos();
+                targets.forEach(n => {
+                    n.clearAttackMove();
+                    n.setDestination(pos.x, pos.y);
+                    n.ignoreEnemies = true;
+                });
+                moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
+            } else {
             let clickedNemo = null;
             for (const nemo of nemos) {
                 if (
@@ -261,6 +265,7 @@ canvas.addEventListener("mouseup", (e) => {
                     selectedSquads.push(clickedSquad);
                 }
             }
+            }
         } else {
             const minX = Math.min(selectionRect.x1, selectionRect.x2);
             const maxX = Math.max(selectionRect.x1, selectionRect.x2);
@@ -289,6 +294,7 @@ canvas.addEventListener("mouseup", (e) => {
         }
 
         selectionRect = null;
+        selectionStartedWithSelection = false;
     }
 
     if (isMoveDragging && e.button === 2) {
@@ -323,13 +329,15 @@ canvas.addEventListener("mouseup", (e) => {
                     const y = minY + (height * (row + 0.5)) / rows;
                     targets[i].clearAttackMove();
                     targets[i].setDestination(x, y);
-                    moveIndicators.push(new MoveIndicator(x, y));
+                    targets[i].ignoreEnemies = true;
+                    moveIndicators.push(new MoveIndicator(x, y, 40, 20, 'yellow'));
                 }
             } else {
                 targets.forEach(n => {
                     n.clearAttackMove();
                     n.setDestination(pos.x, pos.y);
-                    moveIndicators.push(new MoveIndicator(pos.x, pos.y));
+                    n.ignoreEnemies = true;
+                    moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
                 });
             }
         } else {
@@ -347,7 +355,8 @@ canvas.addEventListener("mouseup", (e) => {
                 const y = minY + height * (row + 0.5) / rows;
                 targets[i].clearAttackMove();
                 targets[i].setDestination(x, y);
-                moveIndicators.push(new MoveIndicator(x, y));
+                targets[i].ignoreEnemies = true;
+                moveIndicators.push(new MoveIndicator(x, y, 40, 20, 'yellow'));
             }
         }
         moveRect = null;

@@ -95,6 +95,7 @@ class Nemo {
         this.selected = false;  // 선택 여부
         this.destination = null; // 이동 목표 위치
         this.attackMove = false;
+        this.ignoreEnemies = false; // 이동 중 전투 금지 플래그
         this.attackTargets = [];
         this.attackMovePos = null;
 
@@ -198,6 +199,7 @@ class Nemo {
                 });
             }
             this.attackMove = true;
+            this.ignoreEnemies = false;
             this.attackTargets = targets;
             this.attackMovePos = pos;
             if (targets.length > 0) {
@@ -212,6 +214,7 @@ class Nemo {
             this.attackMove = false;
             this.attackTargets = [];
             this.attackMovePos = null;
+            this.ignoreEnemies = false;
         };
 
         this.rotateTowards = (angle) => {
@@ -301,7 +304,7 @@ class Nemo {
                 const dx = this.nearestEnemy.x - this.x;
                 const dy = this.nearestEnemy.y - this.y;
                 const dist = Math.hypot(dx, dy);
-                if (!this.attackMove && dist <= this.recognitionRange) {
+                if (!this.attackMove && !this.ignoreEnemies && dist <= this.recognitionRange) {
                     this.startAttackMove([this.nearestEnemy], {x: this.nearestEnemy.x, y: this.nearestEnemy.y});
                 }
                 if (this.unitType === "unit") {
@@ -324,6 +327,7 @@ class Nemo {
                 this.x = this.destination.x;
                 this.y = this.destination.y;
                 this.destination = null;
+                this.ignoreEnemies = false;
                 const moveP = this.platforms.find(p => p instanceof MovePlatform);
                 if (moveP) {
                     moveP.destination = null;
@@ -374,6 +378,7 @@ class Nemo {
                     this.x = this.destination.x;
                     this.y = this.destination.y;
                     this.destination = null;
+                    this.ignoreEnemies = false;
                     const moveP = this.platforms.find(p => p instanceof MovePlatform);
                     if (moveP) {
                         moveP.destination = null;
