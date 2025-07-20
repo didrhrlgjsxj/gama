@@ -98,6 +98,7 @@ class Nemo {
         this.ignoreEnemies = false; // 이동 중 전투 금지 플래그
         this.attackTargets = [];
         this.attackMovePos = null;
+        this.shieldFlash = 0; // shield flash timer when shield is depleted
 
         // 적을 감지하는 범위 (10 그리드)
         this.recognitionRange = mainGrid.cellSize * 10;
@@ -254,6 +255,26 @@ class Nemo {
         return nearestEnemy;
     }
 
+    // 현재 방향에서 공격 플랫폼을 고려한 최대 사거리 계산
+    getMaxAttackDistance(angleToEnemy) {
+        let maxDist = 0;
+        this.platforms.forEach(p => {
+            if (p instanceof AttackPlatform) {
+                const muzzle = p.getMuzzlePosition();
+                const offX = muzzle.x - this.x;
+                const offY = muzzle.y - this.y;
+                const parallel = offX * Math.cos(angleToEnemy) + offY * Math.sin(angleToEnemy);
+                const perpSq = offX * offX + offY * offY - parallel * parallel;
+                const reachSq = p.attackRange * p.attackRange - perpSq;
+                if (reachSq >= 0) {
+                    const candidate = parallel + Math.sqrt(reachSq);
+                    if (candidate > maxDist) maxDist = candidate;
+                }
+            }
+        });
+        return maxDist;
+    }
+
     // 적과의 거리나 HP를 기준으로 상태를 업데이트
     update(enemies) {
 
@@ -283,8 +304,11 @@ class Nemo {
                 const dy = nearest.y - this.y;
                 const dist = Math.hypot(dx, dy);
                 this.targetAngle = Math.atan2(dy, dx);
-                const rangeMargin = 5;
-                if (dist > this.maxAttackRange - rangeMargin) {
+
+                // 공격 플랫폼 위치를 고려한 최대 사정거리 계산
+                const desiredRange = this.getMaxAttackDistance(this.targetAngle) - 1;
+
+                if (dist > desiredRange) {
                     this.setDestination(nearest.x, nearest.y);
                 } else {
                     this.destination = null;
@@ -404,6 +428,8 @@ class Nemo {
             this.x += Math.cos(this.angle) * this.maxSpeed * dir;
             this.y += Math.sin(this.angle) * this.maxSpeed * dir;
         }
+
+        if (this.shieldFlash > 0) this.shieldFlash--;
     }
 
     takeDamage(amount) {
@@ -418,6 +444,9 @@ class Nemo {
             }
         } else {
             this.hp -= dmg;
+        }
+        if (this.shieldMaxHp > 0 && this.shieldHp <= 0) {
+            this.shieldFlash = 10;
         }
     }
 
@@ -454,12 +483,13 @@ class Nemo {
         const img = this.offscreen;
         ctx.drawImage(img, -img.width / 2, -img.height / 2);
 
-        // 쉴드 두께는 남은 쉴드 비율에 따라 달라진다
-        if (this.shieldMaxHp > 0) {
+        // 쉴드는 남은 체력 또는 맞았을 때 잠시 표시된다
+        if (this.shieldMaxHp > 0 && (this.shieldHp > 0 || this.shieldFlash > 0)) {
             const ratio = Math.max(0, this.shieldHp) / this.shieldMaxHp;
             const base = 2;
-            const width = base + ratio * 4; // 2~6 사이
-            ctx.globalAlpha = this.shieldHp > 0 ? 0.6 : 0.3;
+            const width = this.shieldHp > 0 ? base + ratio * 4 : base; // 파괴 후에는 얇게
+            const alpha = this.shieldHp > 0 ? 0.6 : 0.3 * (this.shieldFlash / 10);
+            ctx.globalAlpha = alpha;
             ctx.strokeStyle = 'skyblue';
             ctx.lineWidth = width;
             ctx.beginPath();
