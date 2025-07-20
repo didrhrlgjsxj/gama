@@ -222,13 +222,20 @@ canvas.addEventListener("mouseup", (e) => {
         // 드래그 거리가 거의 없으면 클릭으로 간주
         if (dragWidth < 5 && dragHeight < 5) {
             if (selectionStartedWithSelection) {
-                const targets = getAllSelectedNemos();
-                targets.forEach(n => {
-                    n.clearAttackMove();
-                    n.setDestination(pos.x, pos.y);
-                    n.ignoreEnemies = true;
-                });
-                moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
+                if (!attackKey) {
+                    selectedNemos.forEach(n => (n.selected = false));
+                    selectedSquads.forEach(s => (s.selected = false));
+                    selectedNemos = [];
+                    selectedSquads = [];
+                } else {
+                    const targets = getAllSelectedNemos();
+                    targets.forEach(n => {
+                        n.clearAttackMove();
+                        n.setDestination(pos.x, pos.y);
+                        n.ignoreEnemies = true;
+                    });
+                    moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
+                }
             } else {
             let clickedNemo = null;
             for (const nemo of nemos) {
