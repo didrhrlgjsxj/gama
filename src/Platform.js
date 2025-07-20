@@ -106,8 +106,9 @@ class MovePlatform extends Platform {
             const dx = this.destination.x - this.x;
             const dy = this.destination.y - this.y;
             const dist = Math.hypot(dx, dy);
-            if (dist < 5) {
-                // 플랫폼이 먼저 목표 지점에 도달하면 복귀
+            // 플랫폼이 목표 지점에 근접하면 더 이상 끌지 않고 복귀
+            const haltRange = 10;
+            if (dist < haltRange) {
                 this.destination = null;
                 this.mode = "return";
             } else {

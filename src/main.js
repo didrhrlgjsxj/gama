@@ -450,10 +450,11 @@ function gameLoop() {
     ctx.drawImage(background, 0, 0, backgroundWidth, backgroundHeight);
 
     mainGrid.draw(ctx);
-    squadManager.draw(ctx);
 
     // Nemo 객체들을 배경 위에 그리기
     nemos.forEach(nemo => nemo.draw(ctx));
+    // 그룹 하이라이트를 네모 위에 그려 선택 효과가 잘 보이도록 함
+    squadManager.draw(ctx);
     moveIndicators.forEach(ind => {
         ind.update();
         ind.draw(ctx);
