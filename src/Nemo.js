@@ -263,7 +263,13 @@ class Nemo {
         // 공격 명령이 내려진 경우 우선 공격 대상 목록에서 가장 가까운 적을 찾는다
         if (this.attackMove) {
             this.attackTargets = this.attackTargets.filter(t => !t.dead);
-            const pool = this.attackTargets.length > 0 ? this.attackTargets : enemies.filter(e => e !== this && e.team !== this.team);
+            const pool = this.attackTargets.length > 0
+                ? this.attackTargets
+                : enemies.filter(e => {
+                    if (e === this || e.team === this.team) return false;
+                    const d = Math.hypot(e.x - this.x, e.y - this.y);
+                    return d <= this.recognitionRange;
+                });
             let nearest = null;
             let minDist = Infinity;
             pool.forEach(t => {

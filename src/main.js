@@ -427,6 +427,9 @@ function gameLoop() {
         sq.nemos.some(n => !n.dead)
     );
     squadManager.updateSquads(nemos);
+    selectedSquads = selectedSquads.map(old => {
+        return squadManager.squads.find(s => s.idString === old.idString) || null;
+    }).filter(s => s);
 
     // 고스트 네모 위치 갱신
     if (ghostNemo) {
