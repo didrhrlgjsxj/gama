@@ -275,6 +275,26 @@ class Nemo {
         return maxDist;
     }
 
+    // 현재 방향에서 모든 공격 플랫폼이 사정거리에 들기 위한 최대 거리 계산
+    getMinAttackDistance(angleToEnemy) {
+        let minDist = Infinity;
+        this.platforms.forEach(p => {
+            if (p instanceof AttackPlatform) {
+                const muzzle = p.getMuzzlePosition();
+                const offX = muzzle.x - this.x;
+                const offY = muzzle.y - this.y;
+                const parallel = offX * Math.cos(angleToEnemy) + offY * Math.sin(angleToEnemy);
+                const perpSq = offX * offX + offY * offY - parallel * parallel;
+                const reachSq = p.attackRange * p.attackRange - perpSq;
+                if (reachSq >= 0) {
+                    const candidate = parallel + Math.sqrt(reachSq);
+                    if (candidate < minDist) minDist = candidate;
+                }
+            }
+        });
+        return minDist === Infinity ? 0 : minDist;
+    }
+
     // 적과의 거리나 HP를 기준으로 상태를 업데이트
     update(enemies) {
 
@@ -305,8 +325,8 @@ class Nemo {
                 const dist = Math.hypot(dx, dy);
                 this.targetAngle = Math.atan2(dy, dx);
 
-                // 공격 플랫폼 위치를 고려한 최대 사정거리 계산
-                const desiredRange = this.getMaxAttackDistance(this.targetAngle) - 1;
+                // 모든 공격 플랫폼이 닿을 수 있는 거리를 고려해 약간 가까이 멈춘다
+                const desiredRange = this.getMinAttackDistance(this.targetAngle) - 1;
 
                 if (dist > desiredRange) {
                     this.setDestination(nearest.x, nearest.y);
