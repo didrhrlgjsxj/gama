@@ -286,7 +286,10 @@ class AttackPlatform extends Platform {
                 const dy = this.parent.nearestEnemy.y - this.y;
                 targetAngle = Math.atan2(dy, dx);
             } else {
-                targetAngle = baseAngle;
+                // 적이 없을 때는 네모가 바라보는 방향을 그대로 따른다
+                // 기존에는 플랫폼 위치 기준으로 총구가 바깥을 향했으나, 항상
+                // 정면을 바라보도록 수정
+                targetAngle = this.parent.angle;
             }
 
             let angleDiff = targetAngle - this.angle;
