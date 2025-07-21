@@ -90,6 +90,7 @@ let selectionRect = null;
 let isMoveDragging = false;
 let moveRect = null;
 const moveIndicators = [];
+const deathEffects = [];
 let attackKey = false; // 'A' 키가 눌린 상태 여부
 
 window.addEventListener('keydown', (e) => {
@@ -465,6 +466,13 @@ function gameLoop() {
     for (let i = moveIndicators.length - 1; i >= 0; i--) {
         if (moveIndicators[i].isDone()) moveIndicators.splice(i, 1);
     }
+    deathEffects.forEach(e => {
+        e.update();
+        e.draw(ctx);
+    });
+    for (let i = deathEffects.length - 1; i >= 0; i--) {
+        if (deathEffects[i].isDone()) deathEffects.splice(i, 1);
+    }
     if (ghostNemo) ghostNemo.draw(ctx);
     if (selectionRect) {
         ctx.strokeStyle = 'rgba(0,255,0,0.5)';
@@ -506,4 +514,4 @@ background.onload = () => {
 };
 
 
-export { mainGrid };
+export { mainGrid, deathEffects };

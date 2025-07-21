@@ -1,7 +1,8 @@
 import { Platform, MovePlatform, AttackPlatform } from './Platform.js';  // MovePlatform과 AttackPlatform을 가져옵니다.
 import Grid from './Grid.js'; // Grid를 임포트
-import { mainGrid } from './main.js';  // mainGrid를 가져옵니다.
+import { mainGrid, deathEffects } from './main.js';  // mainGrid와 deathEffects를 가져옵니다.
 import Gear from './Gear.js';
+import ShatterEffect from './ShatterEffect.js';
 
 class Nemo {
     static nextId = 1;
@@ -88,8 +89,8 @@ class Nemo {
         this.role = role;
         this.squad = null; // reference to NemoSquad
 
-        this.hp = 20;
-        this.shieldMaxHp = hasShield ? 3 : 0;
+        this.hp = 30;
+        this.shieldMaxHp = hasShield ? 5 : 0;
         this.shieldHp = this.shieldMaxHp;
         this.shieldStrength = 1; //쉴드 강도 (최종 피해 = 받는 피해 - 강도)
         this.dead = false;      // 사망 여부
@@ -490,6 +491,8 @@ class Nemo {
     // 네모가 죽을 때 호출되는 함수
     destroyed() {
         console.log(`${this.team} 팀의 네모가 사망했습니다!`);
+        deathEffects.push(new ShatterEffect(this.x, this.y, this.size, this.borderColor));
+        deathEffects.push(new ShatterEffect(this.x, this.y, this.gear.size, 'gray', 6));
         this.dead = true; // 사망 플래그 설정
         // 필요한 경우 추가적인 정리 작업을 여기서 수행할 수 있습니다.
     }
