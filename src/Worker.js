@@ -5,11 +5,13 @@ class Worker {
         this.x = x;
         this.y = y;
         this.type = type; // 'A' or 'B'
+        this.team = 'blue';
         this.size = 20;
         this.speed = 1.5;
         this.carrying = null;
         this.target = null;
         this.buildComplete = false;
+        this.ghost = false;
     }
 
     moveTo(x, y) {
@@ -82,8 +84,20 @@ class Worker {
     }
 
     draw(ctx) {
-        ctx.fillStyle = this.type === 'A' ? '#3333ff' : '#ff3333';
-        ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+        ctx.save();
+        if (this.ghost) ctx.globalAlpha = 0.5;
+        ctx.fillStyle = '#3333ff';
+        if (this.type === 'A') {
+            ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+        } else {
+            ctx.beginPath();
+            ctx.moveTo(this.x, this.y - this.size / 2);
+            ctx.lineTo(this.x + this.size / 2, this.y + this.size / 2);
+            ctx.lineTo(this.x - this.size / 2, this.y + this.size / 2);
+            ctx.closePath();
+            ctx.fill();
+        }
+        ctx.restore();
     }
 }
 

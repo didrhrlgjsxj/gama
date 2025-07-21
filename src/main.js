@@ -96,6 +96,8 @@ function updateCamera() {
 
 // 임시 배치용 네모
 let ghostNemo = null;
+// 임시 배치용 작업자
+let ghostWorker = null;
 
 const nemos = [];
 squadManager.updateSquads(nemos);
@@ -183,14 +185,14 @@ redUnitBtn.addEventListener("click", () => createGhost("unit", "red", false));
 redArmyBtn.addEventListener("click", () => createGhost("army", "red", true));
 blueUnitBtn.addEventListener("click", () => createGhost("unit", "blue", false));
 blueArmyBtn.addEventListener("click", () => createGhost("army", "blue", true));
-workerABtn.addEventListener("click", () => {
+function createWorkerGhost(type) {
     const { x, y } = worldMouse();
-    workers.push(new Worker(x, y, 'A'));
-});
-workerBBtn.addEventListener("click", () => {
-    const { x, y } = worldMouse();
-    workers.push(new Worker(x, y, 'B'));
-});
+    ghostWorker = new Worker(x, y, type);
+    ghostWorker.ghost = true;
+}
+
+workerABtn.addEventListener("click", () => createWorkerGhost('A'));
+workerBBtn.addEventListener("click", () => createWorkerGhost('B'));
 
 let selectionStartedWithSelection = false;
 
@@ -203,7 +205,11 @@ canvas.addEventListener("mousedown", (e) => {
             issueAttackMove([], pos);
             return;
         }
-        if (ghostNemo) {
+        if (ghostWorker) {
+            ghostWorker.ghost = false;
+            workers.push(ghostWorker);
+            ghostWorker = null;
+        } else if (ghostNemo) {
             nemos.push(ghostNemo);
             squadManager.updateSquads(nemos);
             ghostNemo = null;
@@ -459,7 +465,7 @@ function gameLoop() {
         return squadManager.squads.find(s => s.idString === old.idString) || null;
     }).filter(s => s);
 
-    // 고스트 네모 위치 갱신
+    // 고스트 네모 및 작업자 위치 갱신
     if (ghostNemo) {
         const { x, y } = worldMouse();
         ghostNemo.x = x;
@@ -468,6 +474,11 @@ function gameLoop() {
             p.x = ghostNemo.x + Math.cos(p.angle) * p.baseDistance;
             p.y = ghostNemo.y + Math.sin(p.angle) * p.baseDistance;
         });
+    }
+    if (ghostWorker) {
+        const { x, y } = worldMouse();
+        ghostWorker.x = x;
+        ghostWorker.y = y;
     }
 
     // ★ 카메라 변환 및 확대/축소 적용 ★  
@@ -506,6 +517,7 @@ function gameLoop() {
         if (deathEffects[i].isDone()) deathEffects.splice(i, 1);
     }
     if (ghostNemo) ghostNemo.draw(ctx);
+    if (ghostWorker) ghostWorker.draw(ctx);
     if (selectionRect) {
         ctx.strokeStyle = 'rgba(0,255,0,0.5)';
         ctx.lineWidth = 1;
