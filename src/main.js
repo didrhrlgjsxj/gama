@@ -3,6 +3,8 @@ import Nemo from './Nemo.js';  // Nemo.js에서 Nemo 클래스를 가져옵니�
 import Grid from './Grid.js';
 import { NemoSquadManager } from './NemoSquadManager.js';
 import MoveIndicator from './MoveIndicator.js';
+import { MineralPatch, MineralPiece, Storage } from './Resource.js';
+import Worker from './Worker.js';
 
 
 // Canvas 및 Context 설정
@@ -12,6 +14,9 @@ const blueUnitBtn = document.getElementById("spawnBlueUnitBtn");
 const blueArmyBtn = document.getElementById("spawnBlueArmyBtn");
 const redUnitBtn = document.getElementById("spawnRedUnitBtn");
 const redArmyBtn = document.getElementById("spawnRedArmyBtn");
+const workerABtn = document.getElementById("spawnWorkerABtn");
+const workerBBtn = document.getElementById("spawnWorkerBBtn");
+const mineralSpan = document.getElementById("blueMinerals");
 
 // 배경 이미지 설정
 const background = new Image();
@@ -23,6 +28,18 @@ const backgroundHeight = 1200; // 배경 높이 (원하는 크기로 설정)
 // Nemo 보다 약간 작은 크기의 그리드를 생성
 const mainGrid = new Grid(40);
 const squadManager = new NemoSquadManager(mainGrid.cellSize);
+
+// 자원 및 작업자 관련 변수
+window.blueMinerals = 0;
+const mineralPatches = [
+    new MineralPatch(300, 300),
+    new MineralPatch(500, 250),
+    new MineralPatch(700, 350),
+    new MineralPatch(900, 200)
+];
+const mineralPieces = [];
+const storages = [];
+const workers = [];
 
 
 // 카메라 변수 및 이동 속도
@@ -166,6 +183,14 @@ redUnitBtn.addEventListener("click", () => createGhost("unit", "red", false));
 redArmyBtn.addEventListener("click", () => createGhost("army", "red", true));
 blueUnitBtn.addEventListener("click", () => createGhost("unit", "blue", false));
 blueArmyBtn.addEventListener("click", () => createGhost("army", "blue", true));
+workerABtn.addEventListener("click", () => {
+    const { x, y } = worldMouse();
+    workers.push(new Worker(x, y, 'A'));
+});
+workerBBtn.addEventListener("click", () => {
+    const { x, y } = worldMouse();
+    workers.push(new Worker(x, y, 'B'));
+});
 
 let selectionStartedWithSelection = false;
 
@@ -415,6 +440,8 @@ function gameLoop() {
     nemos.forEach(nemo => nemo.update(enemies));
     resolveCollisions();
 
+    workers.forEach(w => w.update(mineralPatches, mineralPieces, storages));
+
     // 사망한 네모 제거 및 선택 목록 정리
     for (let i = nemos.length - 1; i >= 0; i--) {
         if (nemos[i].dead) {
@@ -454,6 +481,11 @@ function gameLoop() {
     ctx.drawImage(background, 0, 0, backgroundWidth, backgroundHeight);
 
     mainGrid.draw(ctx);
+
+    mineralPatches.forEach(p => p.draw(ctx));
+    storages.forEach(s => s.draw(ctx));
+    mineralPieces.forEach(p => p.draw(ctx));
+    workers.forEach(w => w.draw(ctx));
 
     // Nemo 객체들을 배경 위에 그리기
     nemos.forEach(nemo => nemo.draw(ctx));
@@ -504,6 +536,8 @@ function gameLoop() {
         ctx.stroke();
         ctx.restore();
     }
+
+    mineralSpan.textContent = window.blueMinerals;
 
     requestAnimationFrame(gameLoop);
 }
