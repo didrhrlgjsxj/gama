@@ -15,10 +15,10 @@ class MoveIndicator {
     draw(ctx) {
         const progress = this.age / this.duration;
         const alpha = 1 - progress;
-        const offset = this.size * (1 - progress);
+        const offset = this.size * (1 - progress * progress);
         ctx.save();
         ctx.strokeStyle = this.color;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 5;
         ctx.globalAlpha = alpha;
         ctx.beginPath();
         ctx.moveTo(this.x - offset, this.y);

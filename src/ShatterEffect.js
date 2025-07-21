@@ -1,15 +1,15 @@
 class ShatterEffect {
-    constructor(x, y, size, color, pieceCount = 8, duration = 30) {
+    constructor(x, y, size, color, pieceCount = 12, duration = 40) {
         this.pieces = [];
         this.color = color;
         this.duration = duration;
         this.age = 0;
         for (let i = 0; i < pieceCount; i++) {
             const angle = Math.random() * Math.PI * 2;
-            const speed = 1 + Math.random() * 2;
+            const speed = 2 + Math.random() * 3;
             const s = size * 0.2 * (0.5 + Math.random());
             const rotation = Math.random() * Math.PI * 2;
-            const rotationSpeed = (Math.random() - 0.5) * 0.2;
+            const rotationSpeed = (Math.random() - 0.5) * 0.4;
             this.pieces.push({ x, y, angle, speed, size: s, rotation, rotationSpeed });
         }
     }

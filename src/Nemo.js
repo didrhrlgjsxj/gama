@@ -89,10 +89,10 @@ class Nemo {
         this.role = role;
         this.squad = null; // reference to NemoSquad
 
-        this.hp = 30;
-        this.shieldMaxHp = hasShield ? 5 : 0;
+        this.hp = 45;
+        this.shieldMaxHp = hasShield ? 10 : 0;
         this.shieldHp = this.shieldMaxHp;
-        this.shieldStrength = 1; //쉴드 강도 (최종 피해 = 받는 피해 - 강도)
+        this.shieldStrength = 2; //쉴드 강도 (최종 피해 = 받는 피해 - 강도)
         this.dead = false;      // 사망 여부
         this.selected = false;  // 선택 여부
         this.destination = null; // 이동 목표 위치
@@ -111,6 +111,7 @@ class Nemo {
         if (this.unitType === "unit") {
             this.moving = false;
             this.reverse = false; // 뒤로 이동 여부
+            this.hp = 30;
         }
 
         // 팀에 따른 색상 설정: fillColor는 연한 색, borderColor는 진한 색
@@ -492,7 +493,7 @@ class Nemo {
     destroyed() {
         console.log(`${this.team} 팀의 네모가 사망했습니다!`);
         deathEffects.push(new ShatterEffect(this.x, this.y, this.size, this.borderColor));
-        deathEffects.push(new ShatterEffect(this.x, this.y, this.gear.size, 'gray', 6));
+        deathEffects.push(new ShatterEffect(this.x, this.y, this.gear.size, 'gray', 10));
         this.dead = true; // 사망 플래그 설정
         // 필요한 경우 추가적인 정리 작업을 여기서 수행할 수 있습니다.
     }

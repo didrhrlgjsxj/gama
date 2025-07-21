@@ -1,5 +1,5 @@
 // Returns a color string blended with black by the given ratio (0~1)
-function mixWithBlack(color, ratio = 0.5) {
+function mixWithBlack(color, ratio = 0.7) {
     const canvas = document.createElement('canvas');
     const c = canvas.getContext('2d');
     c.fillStyle = color;
@@ -14,18 +14,18 @@ function mixWithBlack(color, ratio = 0.5) {
 class HitEffect {
     constructor(x, y, bulletSize, angle, targetColor, duration = 20) {
         this.squares = [];
-        this.size = bulletSize;
+        this.size = bulletSize * 1.2;
         this.duration = duration;
         this.age = 0;
 
-        const color = mixWithBlack(targetColor, 0.5);
-        for (let i = 0; i < 3; i++) {
+        const color = mixWithBlack(targetColor, 0.7);
+        for (let i = 0; i < 6; i++) {
             const spread = (Math.random() - 0.5) * Math.PI; // +/-90deg
             this.squares.push({
                 x,
                 y,
                 angle: angle + Math.PI + spread,
-                speed: 0.5 + Math.random() * 1,
+                speed: 1 + Math.random() * 1.5,
                 color
             });
         }

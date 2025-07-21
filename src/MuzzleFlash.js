@@ -12,7 +12,7 @@ class MuzzleFlash {
 
     draw(ctx) {
         const progress = this.age / this.duration;
-        const size = 20 * (1 - progress);
+        const size = 30 * (1 - progress);
         const alpha = 1 - progress;
         const pos = this.platform.getMuzzlePosition();
         ctx.save();
