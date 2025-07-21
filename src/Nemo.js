@@ -100,8 +100,8 @@ class Nemo {
         this.attackMovePos = null;
         this.shieldFlash = 0; // shield flash timer when shield is depleted
 
-        // 적을 감지하는 범위 (10 그리드)
-        this.recognitionRange = mainGrid.cellSize * 10;
+        // 적을 감지하는 범위
+        this.recognitionRange = 400;
 
         // unit 타입일 경우 회전 및 이동을 직접 제어하기 위한 프로퍼티
         this.targetAngle = 0;
@@ -326,7 +326,8 @@ class Nemo {
                 this.targetAngle = Math.atan2(dy, dx);
 
                 // 모든 공격 플랫폼이 닿을 수 있는 거리를 고려해 약간 가까이 멈춘다
-                const desiredRange = this.getMinAttackDistance(this.targetAngle) - 1;
+                const buffer = 20; // 계산 오차를 줄이기 위한 여유 거리
+                const desiredRange = this.getMinAttackDistance(this.targetAngle) - buffer;
 
                 if (dist > desiredRange) {
                     this.setDestination(nearest.x, nearest.y);

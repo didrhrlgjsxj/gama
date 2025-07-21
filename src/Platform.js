@@ -188,7 +188,7 @@ class AttackPlatform extends Platform {
 
         // 공격 관련 설정
         this.attackSpeed = 1;    // 초당 발사 수
-        this.attackRange = mainGrid.cellSize * 7;  // 사정거리(7그리드)
+        this.attackRange = 280;  // 사정거리(고정값)
         this.attackPower = 2;    // 공격력
         this.lastShot = 0;
         this.hitSize = 6;
