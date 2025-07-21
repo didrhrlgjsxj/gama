@@ -1,6 +1,7 @@
 import { Platform, MovePlatform, AttackPlatform } from './Platform.js';  // MovePlatform과 AttackPlatform을 가져옵니다.
 import Grid from './Grid.js'; // Grid를 임포트
 import { mainGrid } from './main.js';  // mainGrid를 가져옵니다.
+import Gear from './Gear.js';
 
 class Nemo {
     static nextId = 1;
@@ -123,6 +124,10 @@ class Nemo {
         // 오프스크린 캔버스 생성
         this.offscreen = Nemo.createOffscreen(this.unitType, this.borderColor, this.size);
         this.shieldCanvas = Nemo.createShieldCanvas(this.unitType, this.size + 6);
+
+        // 활동량과 기어 초기화
+        this.activity = 0;
+        this.gear = new Gear(this);
 
         // 플랫폼 타입을 파라미터로 받아서 해당 타입에 맞는 플랫폼을 생성
         const attackCount = platformTypes.filter(t => t === "attack").length;
@@ -297,6 +302,8 @@ class Nemo {
 
     // 적과의 거리나 HP를 기준으로 상태를 업데이트
     update(enemies) {
+        const prevX = this.x;
+        const prevY = this.y;
 
         // 현재 시점의 모든 적 목록 저장 (AttackPlatform 등에서 사용)
         this.allEnemies = enemies;
@@ -451,6 +458,15 @@ class Nemo {
         }
 
         if (this.shieldFlash > 0) this.shieldFlash--;
+
+        const moved = Math.hypot(this.x - prevX, this.y - prevY) > 0.1;
+        const activePlatform = this.platforms.some(p => p.mode !== 'idle' || p.mode2 !== 'idle');
+        if (moved || activePlatform) {
+            this.activity = Math.min(1, this.activity + 0.05);
+        } else {
+            this.activity = Math.max(0, this.activity - 0.02);
+        }
+        this.gear.update();
     }
 
     takeDamage(amount) {
@@ -501,6 +517,7 @@ class Nemo {
         if (this.unitType === 'unit') {
             ctx.rotate(this.angle + Math.PI / 2);
         }
+        this.gear.draw(ctx);
         const img = this.offscreen;
         ctx.drawImage(img, -img.width / 2, -img.height / 2);
 
