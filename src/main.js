@@ -4,7 +4,7 @@ import Grid from './Grid.js';
 import { NemoSquadManager } from './NemoSquadManager.js';
 import MoveIndicator from './MoveIndicator.js';
 import { MineralPatch, MineralPiece, Storage } from './Resource.js';
-import Worker from './Worker.js';
+import { Worker } from './Nemo.js';
 
 
 // Canvas 및 Context 설정

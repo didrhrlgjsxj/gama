@@ -82,4 +82,5 @@
 // 최근 수정: 이펙트 강도를 높이기 위해 HitEffect, ShatterEffect,
 // MuzzleFlash, MoveIndicator의 기본 값들을 조정했습니다.
 // 최근 수정2: 광물 자원과 일꾼, 저장고 빌딩 로직을 추가했습니다.
+// 최근 수정3: Worker.js 내용을 Nemo.js에 통합하여 Worker 클래스를 함께 내보내도록 변경했습니다.
 
