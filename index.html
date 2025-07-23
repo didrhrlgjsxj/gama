@@ -22,7 +22,14 @@
         Minerals: <span id="blueMinerals">0</span>
     </div>
     <canvas id="gameCanvas" width="1200" height="800"></canvas>
-    
+    <div id="commandPanel" style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.5); color:white; padding:5px; display:none;">
+        <div id="unitInfo"></div>
+        <div id="commandButtons"></div>
+    </div>
+    <div id="buildMenu" style="position:absolute; bottom:50px; left:10px; background:rgba(50,50,50,0.8); color:white; padding:5px; display:none;">
+        <button class="buildBtn" data-type="storage">Storage</button>
+    </div>
+
     <script type="module" src="src/main.js"></script>
     
 </body>

@@ -8,6 +8,12 @@ class Grid {
         this.gridHeight = (window.innerHeight * 2) / this.cellSize;
     }
 
+    snap(x, y) {
+        const sx = Math.round(x / this.cellSize) * this.cellSize;
+        const sy = Math.round(y / this.cellSize) * this.cellSize;
+        return { x: sx, y: sy };
+    }
+
     draw(ctx) {
         ctx.save();
         ctx.strokeStyle = "green"; // 초록색 선 설정

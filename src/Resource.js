@@ -28,15 +28,19 @@ class MineralPiece {
 }
 
 class Storage {
-    constructor(x, y) {
+    constructor(x, y, ghost = false) {
         this.x = x;
         this.y = y;
         this.size = 40;
+        this.ghost = ghost;
     }
 
     draw(ctx) {
+        ctx.save();
+        if (this.ghost) ctx.globalAlpha = 0.5;
         ctx.fillStyle = 'brown';
         ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);
+        ctx.restore();
     }
 }
 

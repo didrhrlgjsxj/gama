@@ -12,6 +12,9 @@ class Worker {
         this.target = null;
         this.buildComplete = false;
         this.ghost = false;
+        this.buildOrder = null;
+        this.selected = false;
+        this.manualTarget = null;
     }
 
     moveTo(x, y) {
@@ -30,6 +33,12 @@ class Worker {
     }
 
     update(patches, pieces, storages) {
+        if (this.manualTarget) {
+            if (this.moveTo(this.manualTarget.x, this.manualTarget.y)) {
+                this.manualTarget = null;
+            }
+            return;
+        }
         if (this.type === 'A') {
             this.updateGatherer(patches, pieces, storages);
         } else {
@@ -74,11 +83,13 @@ class Worker {
     }
 
     updateBuilder(storages) {
-        if (!this.buildComplete) {
-            const buildPos = { x: 600, y: 400 };
+        if (this.buildOrder) {
+            const buildPos = this.buildOrder.pos;
             if (this.moveTo(buildPos.x, buildPos.y)) {
-                storages.push(new Storage(buildPos.x, buildPos.y));
-                this.buildComplete = true;
+                if (this.buildOrder.type === 'storage') {
+                    storages.push(new Storage(buildPos.x, buildPos.y));
+                }
+                this.buildOrder = null;
             }
         }
     }
@@ -86,6 +97,10 @@ class Worker {
     draw(ctx) {
         ctx.save();
         if (this.ghost) ctx.globalAlpha = 0.5;
+        if (this.selected) {
+            ctx.shadowColor = 'blue';
+            ctx.shadowBlur = 10;
+        }
         ctx.fillStyle = '#3333ff';
         if (this.type === 'A') {
             ctx.fillRect(this.x - this.size / 2, this.y - this.size / 2, this.size, this.size);

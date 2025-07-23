@@ -17,6 +17,10 @@ const redArmyBtn = document.getElementById("spawnRedArmyBtn");
 const workerABtn = document.getElementById("spawnWorkerABtn");
 const workerBBtn = document.getElementById("spawnWorkerBBtn");
 const mineralSpan = document.getElementById("blueMinerals");
+const commandPanel = document.getElementById("commandPanel");
+const unitInfoDiv = document.getElementById("unitInfo");
+const commandButtonsDiv = document.getElementById("commandButtons");
+const buildMenu = document.getElementById("buildMenu");
 
 // 배경 이미지 설정
 const background = new Image();
@@ -32,10 +36,10 @@ const squadManager = new NemoSquadManager(mainGrid.cellSize);
 // 자원 및 작업자 관련 변수
 window.blueMinerals = 0;
 const mineralPatches = [
-    new MineralPatch(300, 300),
-    new MineralPatch(500, 250),
-    new MineralPatch(700, 350),
-    new MineralPatch(900, 200)
+    new MineralPatch(...Object.values(mainGrid.snap(320, 320))),
+    new MineralPatch(...Object.values(mainGrid.snap(480, 280))),
+    new MineralPatch(...Object.values(mainGrid.snap(720, 360))),
+    new MineralPatch(...Object.values(mainGrid.snap(920, 200)))
 ];
 const mineralPieces = [];
 const storages = [];
@@ -98,11 +102,14 @@ function updateCamera() {
 let ghostNemo = null;
 // 임시 배치용 작업자
 let ghostWorker = null;
+// 임시 배치용 건물
+let ghostBuilding = null;
 
 const nemos = [];
 squadManager.updateSquads(nemos);
 let selectedNemos = [];
 let selectedSquads = [];
+let selectedWorkers = [];
 let isSelecting = false;
 let selectionStart = null;
 let selectionRect = null;
@@ -110,6 +117,7 @@ let isMoveDragging = false;
 let moveRect = null;
 const moveIndicators = [];
 const deathEffects = [];
+let pendingBuildWorker = null;
 let attackKey = false; // 'A' 키가 눌린 상태 여부
 
 window.addEventListener('keydown', (e) => {
@@ -130,6 +138,36 @@ function getAllSelectedNemos() {
     const set = new Set(selectedNemos);
     selectedSquads.forEach(s => s.nemos.forEach(n => set.add(n)));
     return Array.from(set);
+}
+
+function updateCommandPanel() {
+    const anySelection = selectedNemos.length || selectedWorkers.length || selectedSquads.length;
+    if (!anySelection) {
+        commandPanel.style.display = 'none';
+        buildMenu.style.display = 'none';
+        return;
+    }
+    commandPanel.style.display = 'block';
+    let unit = selectedNemos[0] || selectedWorkers[0] || null;
+    if (unit) {
+        let info = `HP: ${Math.round(unit.hp || 0)}`;
+        if (unit.shieldMaxHp) info += ` / Shield: ${Math.round(unit.shieldHp)}`;
+        unitInfoDiv.textContent = info;
+        commandButtonsDiv.innerHTML = '';
+        if (unit instanceof Worker && unit.type === 'B') {
+            const btn = document.createElement('button');
+            btn.textContent = 'Build';
+            btn.onclick = () => {
+                buildMenu.style.display = buildMenu.style.display === 'none' ? 'block' : 'none';
+            };
+            commandButtonsDiv.appendChild(btn);
+        } else if (unit.platforms) {
+            const atkBtn = document.createElement('button');
+            atkBtn.textContent = 'Attack Move';
+            atkBtn.onclick = () => { attackKey = true; };
+            commandButtonsDiv.appendChild(atkBtn);
+        }
+    }
 }
 //blueUnitNemo
 
@@ -193,6 +231,18 @@ function createWorkerGhost(type) {
 
 workerABtn.addEventListener("click", () => createWorkerGhost('A'));
 workerBBtn.addEventListener("click", () => createWorkerGhost('B'));
+document.querySelectorAll('.buildBtn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        const type = btn.getAttribute('data-type');
+        const { x, y } = worldMouse();
+        const pos = mainGrid.snap(x, y);
+        ghostBuilding = new Storage(pos.x, pos.y, true);
+        buildMenu.style.display = 'none';
+        if (selectedWorkers[0]) {
+            pendingBuildWorker = selectedWorkers[0];
+        }
+    });
+});
 
 let selectionStartedWithSelection = false;
 
@@ -209,6 +259,10 @@ canvas.addEventListener("mousedown", (e) => {
             ghostWorker.ghost = false;
             workers.push(ghostWorker);
             ghostWorker = null;
+        } else if (ghostBuilding && pendingBuildWorker) {
+            pendingBuildWorker.buildOrder = { type: 'storage', pos: { x: ghostBuilding.x, y: ghostBuilding.y } };
+            ghostBuilding = null;
+            pendingBuildWorker = null;
         } else if (ghostNemo) {
             nemos.push(ghostNemo);
             squadManager.updateSquads(nemos);
@@ -224,6 +278,9 @@ canvas.addEventListener("mousedown", (e) => {
         if (selectedNemos.length > 0 || selectedSquads.length > 0) {
             isMoveDragging = true;
             moveRect = { x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y };
+            e.preventDefault();
+        } else if (selectedWorkers.length > 0) {
+            selectedWorkers.forEach(w => { w.manualTarget = pos; });
             e.preventDefault();
         }
     }
@@ -281,15 +338,32 @@ canvas.addEventListener("mouseup", (e) => {
                     break;
                 }
             }
+            let clickedWorker = null;
+            for (const w of workers) {
+                if (
+                    pos.x >= w.x - w.size / 2 &&
+                    pos.x <= w.x + w.size / 2 &&
+                    pos.y >= w.y - w.size / 2 &&
+                    pos.y <= w.y + w.size / 2
+                ) {
+                    clickedWorker = w;
+                    break;
+                }
+            }
 
             selectedNemos.forEach(n => (n.selected = false));
+            selectedWorkers.forEach(w => (w.selected = false));
             selectedSquads.forEach(s => (s.selected = false));
             selectedNemos = [];
+            selectedWorkers = [];
             selectedSquads = [];
 
             if (clickedNemo) {
                 clickedNemo.selected = true;
                 selectedNemos.push(clickedNemo);
+            } else if (clickedWorker) {
+                clickedWorker.selected = true;
+                selectedWorkers.push(clickedWorker);
             } else {
                 let clickedSquad = null;
                 for (const squad of squadManager.squads) {
@@ -311,13 +385,21 @@ canvas.addEventListener("mouseup", (e) => {
             const minY = Math.min(selectionRect.y1, selectionRect.y2);
             const maxY = Math.max(selectionRect.y1, selectionRect.y2);
             selectedNemos.forEach(n => (n.selected = false));
+            selectedWorkers.forEach(w => (w.selected = false));
             selectedSquads.forEach(s => (s.selected = false));
             selectedNemos = [];
+            selectedWorkers = [];
             selectedSquads = [];
             nemos.forEach(nemo => {
                 if (nemo.x >= minX && nemo.x <= maxX && nemo.y >= minY && nemo.y <= maxY) {
                     nemo.selected = true;
                     selectedNemos.push(nemo);
+                }
+            });
+            workers.forEach(w => {
+                if (w.x >= minX && w.x <= maxX && w.y >= minY && w.y <= maxY) {
+                    w.selected = true;
+                    selectedWorkers.push(w);
                 }
             });
             squadManager.squads.forEach(squad => {
@@ -480,6 +562,12 @@ function gameLoop() {
         ghostWorker.x = x;
         ghostWorker.y = y;
     }
+    if (ghostBuilding) {
+        const { x, y } = worldMouse();
+        const snapped = mainGrid.snap(x, y);
+        ghostBuilding.x = snapped.x;
+        ghostBuilding.y = snapped.y;
+    }
 
     // ★ 카메라 변환 및 확대/축소 적용 ★  
     // ctx.scale(scale, scale)와 ctx.translate(-cameraX, -cameraY)를 통해
@@ -518,6 +606,7 @@ function gameLoop() {
     }
     if (ghostNemo) ghostNemo.draw(ctx);
     if (ghostWorker) ghostWorker.draw(ctx);
+    if (ghostBuilding) ghostBuilding.draw(ctx);
     if (selectionRect) {
         ctx.strokeStyle = 'rgba(0,255,0,0.5)';
         ctx.lineWidth = 1;
@@ -550,7 +639,7 @@ function gameLoop() {
     }
 
     mineralSpan.textContent = window.blueMinerals;
-
+    updateCommandPanel();
     requestAnimationFrame(gameLoop);
 }
 
