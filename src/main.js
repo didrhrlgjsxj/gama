@@ -68,10 +68,21 @@ canvas.addEventListener("mousemove", (event) => {
 canvas.addEventListener("wheel", (event) => {
     event.preventDefault(); // 기본 스크롤 동작 방지
     const zoomSpeed = 0.001; // 확대/축소 속도 (원하는 값으로 조정)
+    // 현재 화면 중앙의 월드 좌표를 기록
+    const prevScale = scale;
+    const centerX = cameraX + canvas.width / 2 / prevScale;
+    const centerY = cameraY + canvas.height / 2 / prevScale;
+
     // 휠 위로 돌리면 (deltaY < 0) 확대, 아래면 (deltaY > 0) 축소
     scale += -event.deltaY * zoomSpeed;
     // 확대/축소 배율의 최소, 최대 한계값 설정 (예: 0.5배 ~ 3.0배)
     scale = Math.max(0.5, Math.min(scale, 3.0));
+
+    // 새로운 스케일에 맞춰 카메라 위치 조정 (화면 중앙을 기준으로 확대/축소)
+    cameraX = centerX - canvas.width / 2 / scale;
+    cameraY = centerY - canvas.height / 2 / scale;
+    cameraX = Math.max(0, Math.min(backgroundWidth - canvas.width / scale, cameraX));
+    cameraY = Math.max(0, Math.min(backgroundHeight - canvas.height / scale, cameraY));
 });
 
 // 카메라 이동 로직 (마우스가 캔버스 가장자리에 있을 때 이동)
@@ -91,9 +102,11 @@ function updateCamera() {
         cameraY += cameraSpeed; // 아래로 이동
     }
 
-    // 카메라가 배경을 벗어나지 않도록 제한
-    cameraX = Math.max(0, Math.min(backgroundWidth - canvas.width, cameraX));
-    cameraY = Math.max(0, Math.min(backgroundHeight - canvas.height, cameraY));
+    // 카메라가 배경을 벗어나지 않도록 제한 (확대/축소 고려)
+    const maxX = backgroundWidth - canvas.width / scale;
+    const maxY = backgroundHeight - canvas.height / scale;
+    cameraX = Math.max(0, Math.min(maxX, cameraX));
+    cameraY = Math.max(0, Math.min(maxY, cameraY));
 }
 
 // Nemo 관련 코드
@@ -117,6 +130,7 @@ let isMoveDragging = false;
 let moveRect = null;
 const moveIndicators = [];
 const deathEffects = [];
+const gatherEffects = [];
 let pendingBuildWorker = null;
 let attackKey = false; // 'A' 키가 눌린 상태 여부
 
@@ -159,6 +173,15 @@ function updateCommandPanel() {
             btn.textContent = 'Build';
             btn.onclick = () => {
                 buildMenu.style.display = buildMenu.style.display === 'none' ? 'block' : 'none';
+            };
+            commandButtonsDiv.appendChild(btn);
+        } else if (unit instanceof Worker && unit.type === 'A') {
+            const btn = document.createElement('button');
+            btn.textContent = 'Mine';
+            btn.onclick = () => {
+                selectedWorkers.forEach(w => {
+                    if (w.type === 'A') w.startMining(null);
+                });
             };
             commandButtonsDiv.appendChild(btn);
         } else if (unit.platforms) {
@@ -280,7 +303,17 @@ canvas.addEventListener("mousedown", (e) => {
             moveRect = { x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y };
             e.preventDefault();
         } else if (selectedWorkers.length > 0) {
-            selectedWorkers.forEach(w => { w.manualTarget = pos; });
+            let patch = null;
+            for (const p of mineralPatches) {
+                if (Math.hypot(p.x - pos.x, p.y - pos.y) <= p.radius) { patch = p; break; }
+            }
+            selectedWorkers.forEach(w => {
+                if (patch && w.type === 'A') {
+                    w.startMining(patch);
+                } else {
+                    w.manualTarget = pos;
+                }
+            });
             e.preventDefault();
         }
     }
@@ -599,6 +632,13 @@ function gameLoop() {
     for (let i = moveIndicators.length - 1; i >= 0; i--) {
         if (moveIndicators[i].isDone()) moveIndicators.splice(i, 1);
     }
+    gatherEffects.forEach(e => {
+        e.update();
+        e.draw(ctx);
+    });
+    for (let i = gatherEffects.length - 1; i >= 0; i--) {
+        if (gatherEffects[i].isDone()) gatherEffects.splice(i, 1);
+    }
     deathEffects.forEach(e => {
         e.update();
         e.draw(ctx);
@@ -651,4 +691,4 @@ background.onload = () => {
 };
 
 
-export { mainGrid, deathEffects };
+export { mainGrid, deathEffects, gatherEffects };

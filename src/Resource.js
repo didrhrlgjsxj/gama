@@ -31,7 +31,7 @@ class Storage {
     constructor(x, y, ghost = false) {
         this.x = x;
         this.y = y;
-        this.size = 40;
+        this.size = 80;
         this.ghost = ghost;
     }
 

@@ -1,6 +1,6 @@
 import { Platform, MovePlatform, AttackPlatform } from './Platform.js';  // MovePlatform과 AttackPlatform을 가져옵니다.
 import Grid from './Grid.js'; // Grid를 임포트
-import { mainGrid, deathEffects } from './main.js';  // mainGrid와 deathEffects를 가져옵니다.
+import { mainGrid, deathEffects, gatherEffects } from './main.js';  // mainGrid와 deathEffects, gatherEffects를 가져옵니다.
 import Gear from './Gear.js';
 import ShatterEffect from './ShatterEffect.js';
 import { MineralPiece, Storage } from './Resource.js';
@@ -580,6 +580,8 @@ class Worker {
         this.buildOrder = null;
         this.selected = false;
         this.manualTarget = null;
+        this.mining = false;
+        this.miningTime = 0;
     }
 
     moveTo(x, y) {
@@ -595,6 +597,13 @@ class Worker {
             this.y = y;
             return true;
         }
+    }
+
+    startMining(patch) {
+        this.target = patch;
+        this.mining = false;
+        this.miningTime = 0;
+        this.manualTarget = null;
     }
 
     update(patches, pieces, storages) {
@@ -616,34 +625,47 @@ class Worker {
     }
 
     updateGatherer(patches, pieces, storages) {
-        if (!this.carrying) {
-            if (!this.target) {
-                let closest = null;
-                let dist = Infinity;
-                patches.forEach(p => {
-                    const d = Math.hypot(p.x - this.x, p.y - this.y);
-                    if (d < dist) { dist = d; closest = p; }
-                });
-                this.target = closest;
+        if (this.carrying) {
+            let closest = null;
+            let dist = Infinity;
+            storages.forEach(s => {
+                const d = Math.hypot(s.x - this.x, s.y - this.y);
+                if (d < dist) { dist = d; closest = s; }
+            });
+            if (closest && this.moveTo(closest.x, closest.y)) {
+                const idx = pieces.indexOf(this.carrying);
+                if (idx !== -1) pieces.splice(idx, 1);
+                this.carrying = null;
+                this.target = null;
+                window.blueMinerals += 1;
             }
-            if (this.target) {
-                if (this.moveTo(this.target.x, this.target.y)) {
-                    const piece = new MineralPiece(this.target.x, this.target.y);
-                    pieces.push(piece);
-                    this.carrying = piece;
-                }
+            return;
+        }
+
+        if (this.mining) {
+            this.miningTime--;
+            if (this.miningTime <= 0) {
+                const piece = new MineralPiece(this.target.x, this.target.y);
+                pieces.push(piece);
+                this.carrying = piece;
+                this.mining = false;
             }
-        } else {
-            const storage = storages[0];
-            if (storage) {
-                if (this.moveTo(storage.x, storage.y)) {
-                    const idx = pieces.indexOf(this.carrying);
-                    if (idx !== -1) pieces.splice(idx, 1);
-                    this.carrying = null;
-                    this.target = null;
-                    window.blueMinerals += 1;
-                }
-            }
+            return;
+        }
+
+        if (!this.target) {
+            let closest = null;
+            let dist = Infinity;
+            patches.forEach(p => {
+                const d = Math.hypot(p.x - this.x, p.y - this.y);
+                if (d < dist) { dist = d; closest = p; }
+            });
+            this.target = closest;
+        }
+        if (this.target && this.moveTo(this.target.x, this.target.y)) {
+            this.mining = true;
+            this.miningTime = 30;
+            gatherEffects.push(new ShatterEffect(this.target.x, this.target.y, 10, 'cyan', 5, 15));
         }
     }
 
