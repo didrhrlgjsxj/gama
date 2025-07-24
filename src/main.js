@@ -16,6 +16,7 @@ const redUnitBtn = document.getElementById("spawnRedUnitBtn");
 const redArmyBtn = document.getElementById("spawnRedArmyBtn");
 const workerABtn = document.getElementById("spawnWorkerABtn");
 const workerBBtn = document.getElementById("spawnWorkerBBtn");
+const openBuildMenuBtn = document.getElementById("openBuildMenuBtn");
 const mineralSpan = document.getElementById("blueMinerals");
 const commandPanel = document.getElementById("commandPanel");
 const unitInfoDiv = document.getElementById("unitInfo");
@@ -132,6 +133,7 @@ const moveIndicators = [];
 const deathEffects = [];
 const gatherEffects = [];
 let pendingBuildWorker = null;
+let pendingBuildType = null;
 let attackKey = false; // 'A' 키가 눌린 상태 여부
 
 window.addEventListener('keydown', (e) => {
@@ -255,6 +257,9 @@ function createWorkerGhost(type) {
 
 workerABtn.addEventListener("click", () => createWorkerGhost('A'));
 workerBBtn.addEventListener("click", () => createWorkerGhost('B'));
+openBuildMenuBtn.addEventListener('click', () => {
+    buildMenu.style.display = buildMenu.style.display === 'none' ? 'block' : 'none';
+});
 document.querySelectorAll('.buildBtn').forEach(btn => {
     btn.addEventListener('click', () => {
         const type = btn.getAttribute('data-type');
@@ -264,7 +269,10 @@ document.querySelectorAll('.buildBtn').forEach(btn => {
         buildMenu.style.display = 'none';
         if (selectedWorkers[0]) {
             pendingBuildWorker = selectedWorkers[0];
+            pendingBuildType = type;
         }
+        buildMenu.style.display = 'none';
+        pendingBuildWorker = selectedWorkers.find(w => w.type === 'B') || null;
     });
 });
 
@@ -284,9 +292,12 @@ canvas.addEventListener("mousedown", (e) => {
             workers.push(ghostWorker);
             ghostWorker = null;
         } else if (ghostBuilding && pendingBuildWorker) {
-            pendingBuildWorker.buildOrder = { type: 'storage', pos: { x: ghostBuilding.x, y: ghostBuilding.y } };
+            const buildPos = { x: ghostBuilding.x, y: ghostBuilding.y };
+            const type = pendingBuildType || 'storage';
+            pendingBuildWorker.startBuilding(type, buildPos);
             ghostBuilding = null;
             pendingBuildWorker = null;
+            pendingBuildType = null;
         } else if (ghostNemo) {
             nemos.push(ghostNemo);
             squadManager.updateSquads(nemos);

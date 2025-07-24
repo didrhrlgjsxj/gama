@@ -608,6 +608,11 @@ class Worker {
         this.manualTarget = null;
     }
 
+    startBuilding(type, pos) {
+        this.buildOrder = { type, pos };
+        this.manualTarget = null;
+    }
+
     update(patches, pieces, storages) {
         if (this.dead) return;
         if (this.manualTarget) {
