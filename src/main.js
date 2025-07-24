@@ -497,8 +497,10 @@ function resolveCollisions() {
             const minDist = (a.size / 2) + (b.size / 2);
             const dx = b.x - a.x;
             const dy = b.y - a.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist > 0 && dist < minDist) {
+            const distSq = dx * dx + dy * dy;
+            const minDistSq = minDist * minDist;
+            if (distSq > 0 && distSq < minDistSq) {
+                const dist = Math.sqrt(distSq);
                 const overlap = minDist - dist;
                 const nx = dx / dist;
                 const ny = dy / dist;

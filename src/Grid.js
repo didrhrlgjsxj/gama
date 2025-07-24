@@ -4,8 +4,26 @@ class Grid {
     constructor(cellSize) {
         this.cellSize = cellSize; // 셀 크기 설정
         // 전체 그리드 영역을 기존보다 2배 넓게 설정
-        this.gridWidth = (window.innerWidth * 2) / this.cellSize;
-        this.gridHeight = (window.innerHeight * 2) / this.cellSize;
+        this.gridWidth = Math.ceil((window.innerWidth * 2) / this.cellSize);
+        this.gridHeight = Math.ceil((window.innerHeight * 2) / this.cellSize);
+
+        // 그리드를 한 번만 그려 두기 위한 오프스크린 캔버스 생성
+        this.canvas = document.createElement('canvas');
+        this.canvas.width = this.gridWidth * this.cellSize;
+        this.canvas.height = this.gridHeight * this.cellSize;
+        const gctx = this.canvas.getContext('2d');
+        gctx.strokeStyle = 'green';
+        gctx.lineWidth = 1;
+        gctx.beginPath();
+        for (let x = 0; x <= this.gridWidth; x++) {
+            gctx.moveTo(x * this.cellSize, 0);
+            gctx.lineTo(x * this.cellSize, this.canvas.height);
+        }
+        for (let y = 0; y <= this.gridHeight; y++) {
+            gctx.moveTo(0, y * this.cellSize);
+            gctx.lineTo(this.canvas.width, y * this.cellSize);
+        }
+        gctx.stroke();
     }
 
     snap(x, y) {
@@ -15,27 +33,7 @@ class Grid {
     }
 
     draw(ctx) {
-        ctx.save();
-        ctx.strokeStyle = "green"; // 초록색 선 설정
-        ctx.lineWidth = 1;
-
-        // 가로선 그리기
-        for (let x = 0; x <= this.gridWidth; x++) {
-            ctx.beginPath();
-            ctx.moveTo(x * this.cellSize, 0);
-            ctx.lineTo(x * this.cellSize, window.innerHeight * 2);
-            ctx.stroke();
-        }
-
-        // 세로선 그리기
-        for (let y = 0; y <= this.gridHeight; y++) {
-            ctx.beginPath();
-            ctx.moveTo(0, y * this.cellSize);
-            ctx.lineTo(window.innerWidth * 2, y * this.cellSize);
-            ctx.stroke();
-        }
-
-        ctx.restore();
+        ctx.drawImage(this.canvas, 0, 0);
     }
 
     // 주변 엔티티 찾기 (예시로만 구현)
