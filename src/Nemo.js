@@ -573,6 +573,8 @@ class Worker {
         this.team = 'blue';
         this.size = 20;
         this.speed = 1.5;
+        this.hp = 20;
+        this.dead = false;
         this.carrying = null;
         this.target = null;
         this.buildComplete = false;
@@ -607,6 +609,7 @@ class Worker {
     }
 
     update(patches, pieces, storages) {
+        if (this.dead) return;
         if (this.manualTarget) {
             if (this.moveTo(this.manualTarget.x, this.manualTarget.y)) {
                 this.manualTarget = null;
@@ -621,6 +624,10 @@ class Worker {
         if (this.carrying) {
             this.carrying.x = this.x;
             this.carrying.y = this.y - this.size;
+        }
+
+        if (this.hp <= 0 && !this.dead) {
+            this.destroyed();
         }
     }
 
@@ -679,6 +686,18 @@ class Worker {
                 this.buildOrder = null;
             }
         }
+    }
+
+    takeDamage(amount) {
+        this.hp -= amount;
+        if (this.hp <= 0 && !this.dead) {
+            this.destroyed();
+        }
+    }
+
+    destroyed() {
+        this.dead = true;
+        deathEffects.push(new ShatterEffect(this.x, this.y, this.size, 'darkblue'));
     }
 
     draw(ctx) {

@@ -202,7 +202,8 @@ function worldMouse() {
 }
 
 function enemyNemoAt(pos, myTeam) {
-    for (const n of nemos) {
+    const list = [...nemos, ...workers];
+    for (const n of list) {
         if (n.team === myTeam) continue;
         if (pos.x >= n.x - n.size / 2 && pos.x <= n.x + n.size / 2 &&
             pos.y >= n.y - n.size / 2 && pos.y <= n.y + n.size / 2) {
@@ -559,7 +560,7 @@ function gameLoop() {
 
 
     // Nemo 업데이트 (플랫폼 업데이트 및 Nemo 이동)
-    const enemies = nemos;
+    const enemies = [...nemos, ...workers];
     nemos.forEach(nemo => nemo.update(enemies));
     resolveCollisions();
 
@@ -572,6 +573,14 @@ function gameLoop() {
             nemos.splice(i, 1);
             const idx = selectedNemos.indexOf(dead);
             if (idx !== -1) selectedNemos.splice(idx, 1);
+        }
+    }
+    for (let i = workers.length - 1; i >= 0; i--) {
+        if (workers[i].dead) {
+            const dead = workers[i];
+            workers.splice(i, 1);
+            const idx = selectedWorkers.indexOf(dead);
+            if (idx !== -1) selectedWorkers.splice(idx, 1);
         }
     }
     selectedSquads = selectedSquads.filter(sq =>
