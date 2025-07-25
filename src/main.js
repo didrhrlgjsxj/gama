@@ -745,6 +745,8 @@ function gameLoop() {
         ctx.restore();
     }
 
+    const totalMinerals = storages.reduce((sum, s) => sum + s.getAmount('mineral'), 0);
+    window.blueMinerals = totalMinerals;
     mineralSpan.textContent = window.blueMinerals;
     updateCommandPanel();
     requestAnimationFrame(gameLoop);

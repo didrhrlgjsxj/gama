@@ -637,6 +637,16 @@ class Worker {
     }
 
     updateGatherer(patches, pieces, storages) {
+        if (!this.target && patches.length > 0) {
+            let closestPatch = null;
+            let pd = Infinity;
+            patches.forEach(p => {
+                const d = Math.hypot(p.x - this.x, p.y - this.y);
+                if (d < pd) { pd = d; closestPatch = p; }
+            });
+            this.target = closestPatch;
+        }
+
         if (this.carrying) {
             let closest = null;
             let dist = Infinity;
@@ -647,8 +657,16 @@ class Worker {
             if (closest && this.moveTo(closest.x, closest.y)) {
                 const idx = pieces.indexOf(this.carrying);
                 if (idx !== -1) pieces.splice(idx, 1);
+                closest.store('mineral', 1);
                 this.carrying = null;
-                this.target = null;
+                // After depositing, continue mining the nearest patch
+                let nearest = null;
+                let pdist = Infinity;
+                patches.forEach(p => {
+                    const d = Math.hypot(p.x - this.x, p.y - this.y);
+                    if (d < pdist) { pdist = d; nearest = p; }
+                });
+                this.target = nearest;
                 window.blueMinerals += 1;
             }
             return;
