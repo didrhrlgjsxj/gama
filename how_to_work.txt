@@ -88,3 +88,4 @@
 // 최근 수정6: 모바일 화면에서 스크롤이 발생하지 않도록 body에 overflow:hidden을 적용하고
 //             각 UI 패널을 fixed 위치로 수정했습니다. 하단 commandPanel 위치도 위로 올렸습니다.
 
+// 최근 수정6: 별도의 ui.html과 style.css로 새로운 UI 레이아웃을 추가했습니다.

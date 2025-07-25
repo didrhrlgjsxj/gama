@@ -164,40 +164,62 @@ function getAllSelectedNemos() {
     return Array.from(set);
 }
 
+// 명령 패널의 이전 상태를 기록하여 매 프레임 DOM을 다시 만들지 않도록 함
+let lastButtonType = null;
+let lastInfoText = '';
+
 function updateCommandPanel() {
     const anySelection = selectedNemos.length || selectedWorkers.length || selectedSquads.length;
     if (!anySelection) {
         commandPanel.style.display = 'none';
         buildMenu.style.display = 'none';
+        lastButtonType = null;
+        lastInfoText = '';
         return;
     }
     commandPanel.style.display = 'block';
-    let unit = selectedNemos[0] || selectedWorkers[0] || null;
-    if (unit) {
-        let info = `HP: ${Math.round(unit.hp || 0)}`;
-        if (unit.shieldMaxHp) info += ` / Shield: ${Math.round(unit.shieldHp)}`;
+    const unit = selectedNemos[0] || selectedWorkers[0] || null;
+    if (!unit) return;
+
+    let info = `HP: ${Math.round(unit.hp || 0)}`;
+    if (unit.shieldMaxHp) info += ` / Shield: ${Math.round(unit.shieldHp)}`;
+    if (info !== lastInfoText) {
         unitInfoDiv.textContent = info;
+        lastInfoText = info;
+    }
+
+    let buttonType = null;
+    if (unit instanceof Worker && unit.type === 'B') {
+        buttonType = 'build';
+    } else if (unit instanceof Worker && unit.type === 'A') {
+        buttonType = 'mine';
+    } else if (unit.platforms) {
+        buttonType = 'attack';
+    }
+
+    if (buttonType !== lastButtonType) {
         commandButtonsDiv.innerHTML = '';
-        if (unit instanceof Worker && unit.type === 'B') {
+        if (buttonType === 'build') {
             const btn = document.createElement('button');
             btn.textContent = 'Build';
             btn.onclick = () => {
                 buildMenu.style.display = buildMenu.style.display === 'none' ? 'block' : 'none';
             };
             commandButtonsDiv.appendChild(btn);
-        } else if (unit instanceof Worker && unit.type === 'A') {
+        } else if (buttonType === 'mine') {
             const btn = document.createElement('button');
             btn.textContent = 'Mine';
             btn.onclick = () => {
                 mineKey = true;
             };
             commandButtonsDiv.appendChild(btn);
-        } else if (unit.platforms) {
+        } else if (buttonType === 'attack') {
             const atkBtn = document.createElement('button');
             atkBtn.textContent = 'Attack Move';
             atkBtn.onclick = () => { attackKey = true; };
             commandButtonsDiv.appendChild(atkBtn);
         }
+        lastButtonType = buttonType;
     }
 }
 //blueUnitNemo
