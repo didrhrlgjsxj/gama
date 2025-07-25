@@ -5,6 +5,7 @@ import { NemoSquadManager } from './NemoSquadManager.js';
 import MoveIndicator from './MoveIndicator.js';
 import { MineralPatch, MineralPiece, Storage } from './Resource.js';
 import { Worker } from './Nemo.js';
+import { TeamManagers } from './TeamManager.js';
 
 
 // Canvas 및 Context 설정
@@ -34,7 +35,7 @@ const mainGrid = new Grid(40);
 const squadManager = new NemoSquadManager(mainGrid.cellSize);
 
 // 자원 및 작업자 관련 변수
-window.blueMinerals = 0;
+TeamManagers.blue.minerals = 0;
 const mineralPatches = [
     new MineralPatch(...Object.values(mainGrid.snap(320, 320))),
     new MineralPatch(...Object.values(mainGrid.snap(480, 280))),
@@ -318,7 +319,7 @@ canvas.addEventListener("mousedown", (e) => {
                 if (Math.hypot(p.x - pos.x, p.y - pos.y) <= p.radius) { patch = p; break; }
             }
             if (patch) {
-                selectedWorkers.forEach(w => { if (w.type === 'A') w.startMining(patch); });
+                selectedWorkers.forEach(w => { if (w.type === 'A') w.toggleAutoMine(patch); });
             }
             mineKey = false;
             return;
@@ -351,16 +352,8 @@ canvas.addEventListener("mousedown", (e) => {
             moveRect = { x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y };
             e.preventDefault();
         } else if (selectedWorkers.length > 0) {
-            let patch = null;
-            for (const p of mineralPatches) {
-                if (Math.hypot(p.x - pos.x, p.y - pos.y) <= p.radius) { patch = p; break; }
-            }
             selectedWorkers.forEach(w => {
-                if (patch && w.type === 'A') {
-                    w.startMining(patch);
-                } else {
-                    w.manualTarget = pos;
-                }
+                w.manualTarget = pos;
             });
             e.preventDefault();
         }
@@ -745,9 +738,7 @@ function gameLoop() {
         ctx.restore();
     }
 
-    const totalMinerals = storages.reduce((sum, s) => sum + s.getAmount('mineral'), 0);
-    window.blueMinerals = totalMinerals;
-    mineralSpan.textContent = window.blueMinerals;
+    mineralSpan.textContent = TeamManagers.blue.getMinerals();
     updateCommandPanel();
     requestAnimationFrame(gameLoop);
 }

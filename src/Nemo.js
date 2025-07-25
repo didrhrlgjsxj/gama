@@ -4,6 +4,7 @@ import { mainGrid, deathEffects, gatherEffects } from './main.js';  // mainGridì
 import Gear from './Gear.js';
 import ShatterEffect from './ShatterEffect.js';
 import { MineralPiece, Storage } from './Resource.js';
+import { TeamManagers } from './TeamManager.js';
 
 class Nemo {
     static nextId = 1;
@@ -584,6 +585,8 @@ class Worker {
         this.manualTarget = null;
         this.mining = false;
         this.miningTime = 0;
+        this.autoMine = false;
+        this.autoMineTarget = null;
     }
 
     moveTo(x, y) {
@@ -606,6 +609,19 @@ class Worker {
         this.mining = false;
         this.miningTime = 0;
         this.manualTarget = null;
+    }
+
+    toggleAutoMine(patch) {
+        if (!this.autoMine) {
+            this.autoMine = true;
+            this.autoMineTarget = patch;
+            this.startMining(patch);
+        } else {
+            this.autoMine = false;
+            this.autoMineTarget = null;
+            this.target = null;
+            this.mining = false;
+        }
     }
 
     startBuilding(type, pos) {
@@ -659,15 +675,11 @@ class Worker {
                 if (idx !== -1) pieces.splice(idx, 1);
                 closest.store('mineral', 1);
                 this.carrying = null;
-                // After depositing, continue mining the nearest patch
-                let nearest = null;
-                let pdist = Infinity;
-                patches.forEach(p => {
-                    const d = Math.hypot(p.x - this.x, p.y - this.y);
-                    if (d < pdist) { pdist = d; nearest = p; }
-                });
-                this.target = nearest;
-                window.blueMinerals += 1;
+                this.target = null;
+                TeamManagers[this.team].addMinerals(1);
+                if (this.autoMine && this.autoMineTarget) {
+                    this.startMining(this.autoMineTarget);
+                }
             }
             return;
         }
