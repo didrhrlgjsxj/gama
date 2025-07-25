@@ -665,15 +665,6 @@ class Worker {
             return;
         }
 
-        if (!this.target) {
-            let closest = null;
-            let dist = Infinity;
-            patches.forEach(p => {
-                const d = Math.hypot(p.x - this.x, p.y - this.y);
-                if (d < dist) { dist = d; closest = p; }
-            });
-            this.target = closest;
-        }
         if (this.target && this.moveTo(this.target.x, this.target.y)) {
             this.mining = true;
             this.miningTime = 30;

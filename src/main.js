@@ -16,7 +16,6 @@ const redUnitBtn = document.getElementById("spawnRedUnitBtn");
 const redArmyBtn = document.getElementById("spawnRedArmyBtn");
 const workerABtn = document.getElementById("spawnWorkerABtn");
 const workerBBtn = document.getElementById("spawnWorkerBBtn");
-const openBuildMenuBtn = document.getElementById("openBuildMenuBtn");
 const mineralSpan = document.getElementById("blueMinerals");
 const commandPanel = document.getElementById("commandPanel");
 const unitInfoDiv = document.getElementById("unitInfo");
@@ -135,10 +134,15 @@ const gatherEffects = [];
 let pendingBuildWorker = null;
 let pendingBuildType = null;
 let attackKey = false; // 'A' 키가 눌린 상태 여부
+let mineKey = false; // 'M' 키 또는 Mine 버튼 활성화 여부
 
 window.addEventListener('keydown', (e) => {
     if (e.key === 'a' || e.key === 'A') {
         attackKey = true;
+        e.preventDefault();
+    }
+    if (e.key === 'm' || e.key === 'M') {
+        mineKey = true;
         e.preventDefault();
     }
 });
@@ -146,6 +150,10 @@ window.addEventListener('keydown', (e) => {
 window.addEventListener('keyup', (e) => {
     if (e.key === 'a' || e.key === 'A') {
         attackKey = false;
+        e.preventDefault();
+    }
+    if (e.key === 'm' || e.key === 'M') {
+        mineKey = false;
         e.preventDefault();
     }
 });
@@ -181,9 +189,7 @@ function updateCommandPanel() {
             const btn = document.createElement('button');
             btn.textContent = 'Mine';
             btn.onclick = () => {
-                selectedWorkers.forEach(w => {
-                    if (w.type === 'A') w.startMining(null);
-                });
+                mineKey = true;
             };
             commandButtonsDiv.appendChild(btn);
         } else if (unit.platforms) {
@@ -257,9 +263,6 @@ function createWorkerGhost(type) {
 
 workerABtn.addEventListener("click", () => createWorkerGhost('A'));
 workerBBtn.addEventListener("click", () => createWorkerGhost('B'));
-openBuildMenuBtn.addEventListener('click', () => {
-    buildMenu.style.display = buildMenu.style.display === 'none' ? 'block' : 'none';
-});
 document.querySelectorAll('.buildBtn').forEach(btn => {
     btn.addEventListener('click', () => {
         const type = btn.getAttribute('data-type');
@@ -285,6 +288,17 @@ canvas.addEventListener("mousedown", (e) => {
     if (e.button === 0) {
         if (attackKey && selectedAny) {
             issueAttackMove([], pos);
+            return;
+        }
+        if (mineKey && selectedWorkers.some(w => w.type === 'A')) {
+            let patch = null;
+            for (const p of mineralPatches) {
+                if (Math.hypot(p.x - pos.x, p.y - pos.y) <= p.radius) { patch = p; break; }
+            }
+            if (patch) {
+                selectedWorkers.forEach(w => { if (w.type === 'A') w.startMining(patch); });
+            }
+            mineKey = false;
             return;
         }
         if (ghostWorker) {
@@ -693,6 +707,15 @@ function gameLoop() {
     if (attackKey) {
         ctx.save();
         ctx.strokeStyle = 'red';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(mouseX, mouseY, 10, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+    }
+    if (mineKey) {
+        ctx.save();
+        ctx.strokeStyle = 'yellow';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.arc(mouseX, mouseY, 10, 0, Math.PI * 2);
