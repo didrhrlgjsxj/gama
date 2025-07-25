@@ -653,14 +653,12 @@ class Worker {
     }
 
     updateGatherer(patches, pieces, storages) {
-        if (!this.target && patches.length > 0) {
-            let closestPatch = null;
-            let pd = Infinity;
-            patches.forEach(p => {
-                const d = Math.hypot(p.x - this.x, p.y - this.y);
-                if (d < pd) { pd = d; closestPatch = p; }
-            });
-            this.target = closestPatch;
+        if (!this.target) {
+            if (this.autoMine && this.autoMineTarget) {
+                this.startMining(this.autoMineTarget);
+            } else {
+                return;
+            }
         }
 
         if (this.carrying) {
