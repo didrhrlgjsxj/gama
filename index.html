@@ -5,12 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Regend GAMA</title>
     <style>
-        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: lightgray; }
+        body { margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background: lightgray; overflow:hidden; }
         canvas { background: white; }
     </style>
 </head>
 <body>
-    <div style="position:absolute; top:10px; left:10px; z-index:10;">
+    <div style="position:fixed; top:10px; left:10px; z-index:10;">
         <button id="spawnRedUnitBtn">Red Unit (no shield)</button>
         <button id="spawnRedArmyBtn">Red Army (shield)</button>
         <button id="spawnBlueUnitBtn">Blue Unit (no shield)</button>
@@ -18,15 +18,15 @@
         <button id="spawnWorkerABtn">Worker A</button>
         <button id="spawnWorkerBBtn">Worker B</button>
     </div>
-    <div id="resourcePanel" style="position:absolute; top:10px; right:10px; z-index:10;">
+    <div id="resourcePanel" style="position:fixed; top:10px; right:10px; z-index:10;">
         Minerals: <span id="blueMinerals">0</span>
     </div>
     <canvas id="gameCanvas" width="1200" height="800"></canvas>
-    <div id="commandPanel" style="position:absolute; bottom:0; left:0; right:0; background:rgba(0,0,0,0.5); color:white; padding:5px; display:none;">
+    <div id="commandPanel" style="position:fixed; bottom:50px; left:0; right:0; background:rgba(0,0,0,0.5); color:white; padding:5px; display:none;">
         <div id="unitInfo"></div>
         <div id="commandButtons"></div>
     </div>
-    <div id="buildMenu" style="position:absolute; bottom:50px; left:10px; background:rgba(50,50,50,0.8); color:white; padding:5px; display:none;">
+    <div id="buildMenu" style="position:fixed; bottom:110px; left:10px; background:rgba(50,50,50,0.8); color:white; padding:5px; display:none;">
         <button class="buildBtn" data-type="storage">Storage</button>
     </div>
 
