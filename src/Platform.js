@@ -12,7 +12,6 @@ class Platform {
         this.angle = 0;          // 현재 각도
         this.lastAngle = 0;
         this.targetAngle = 0;
-        this.mode = "idle";      // 모드: "idle", "moveOn", "return", "attackOn" (이동관련)
         this.mode2 = "idle";         // 모드: "idle", "moveOn", "return", "attackOn" (상태관련)
         this.type = type;
         this.attackRate = 5; //10초에 x 번
@@ -32,7 +31,6 @@ class Platform {
     // 입력 방향 설정 (라디안)
     keyInputAngle(newAngle) {
         this.angle = newAngle;
-        this.mode = "moveOn"; // 이동 모드 활성화
         this.lastAngle = this.angle;
     }
 
@@ -47,7 +45,7 @@ class Platform {
         this.currentDistance = Math.hypot(dx, dy);
         const baseAngle = Math.atan2(dy, dx) + Math.PI; //실시간 네모의 이동방향 결정
 
-        if (this.mode === "moveOn" ||  this.mode2 === "moveOn") {
+        if (this.mode === "moveOn") {
             // 가속 구간 ==========================================
             this.speed += this.acceleration;
             if (this.speed > this.maxSpeed) this.speed = this.maxSpeed;
@@ -56,7 +54,7 @@ class Platform {
             this.x += Math.cos(this.angle) * this.speed;
             this.y += Math.sin(this.angle) * this.speed;
 
-        } else if (this.mode === "return" || this.mode2 === "return") {
+        } else if (this.mode === "return") {
             // 감속 및 복귀 구간 ==================================
             this.speed -= this.deceleration;
             if (this.speed < 0) this.speed = 0;
@@ -72,7 +70,6 @@ class Platform {
 
             if (Math.hypot(targetX - this.x, targetY - this.y) < 2) {
                 this.mode = "idle"; // 복귀 완료
-                this.mode2 = "idle";
             }
         }
     }
@@ -246,7 +243,6 @@ class AttackPlatform extends Platform {
                     const dy = this.parent.nearestEnemy.y - this.parent.y;
                     const enemyAngle = Math.atan2(dy, dx);
                     let diff = enemyAngle - this.angle;
-                    diff = ((diff + Math.PI) % (2 * Math.PI)) - Math.PI;
                     this.mode2 = Math.abs(diff) < Math.PI / 30 ? "attackOn" : "idle";
                 } else {
                     this.mode2 = "idle";
@@ -257,10 +253,9 @@ class AttackPlatform extends Platform {
                 const dx = this.parent.nearestEnemy.x - this.parent.x;
                 const dy = this.parent.nearestEnemy.y - this.parent.y;
                 const targetAngle = Math.atan2(dy, dx);
-
                 let angleDiff = targetAngle - this.angle;
-                angleDiff = ((angleDiff + Math.PI) % (2 * Math.PI) + 2 * Math.PI) % (2 * Math.PI) - Math.PI;
                 this.mode2 = Math.abs(angleDiff) < Math.PI / 30 ? "attackOn" : "idle";
+
                 this.angle += angleDiff * 0.1;
                 this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
                     + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
