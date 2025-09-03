@@ -50,14 +50,34 @@ class NemoSquad {
     }
 
     determineSquadSize() {
-        const size = this.nemos.length;
-        if (size >= 2 && size <= 5) {
+        let weightedSize = 0;
+        this.nemos.forEach(nemo => {
+            if (nemo.unitType === 'army') {
+                switch (nemo.armyType) {
+                    case 'sqaudio':
+                        weightedSize += 3;
+                        break;
+                    case 'platoon':
+                        weightedSize += 10;
+                        break;
+                    case 'company':
+                        weightedSize += 23;
+                        break;
+                    default:
+                        weightedSize += 1; // 다른 army 타입은 1로 계산
+                }
+            } else {
+                weightedSize += 1; // 'unit' 타입은 1로 계산
+            }
+        });
+
+        if (weightedSize >= 2 && weightedSize <= 5) {
             return SquadSizes.SQUAD;
-        } else if (size >= 6 && size <= 12) {
+        } else if (weightedSize >= 6 && weightedSize <= 12) {
             return SquadSizes.TROOP;
-        } else if (size >= 13 && size <= 30) {
+        } else if (weightedSize >= 13 && weightedSize <= 30) {
             return SquadSizes.PLATOON;
-        } else if (size >= 31) {
+        } else if (weightedSize >= 31) {
             return SquadSizes.COMPANY;
         }
         return null; // Or handle the case where the size doesn't fit any type
