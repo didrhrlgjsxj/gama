@@ -3,12 +3,25 @@ class Gear {
         this.nemo = nemo;
         this.size = size;
         this.angle = 0;
-    }
+   }
 
     update() {
-        // 회전 속도는 네모의 활동량에 비례
-        this.angle += this.nemo.activity * 0.2;
-    }
+        // Calculate activity weight based on Nemo's state
+        this.activityWeight = 1; // Reset to default idle weight
+
+        if (this.nemo.isMoving) {
+            this.activityWeight += 0.5; // Increase weight if moving
+        }
+
+        // Check for attacking (assuming platform activation implies attacking)
+        const activePlatforms = this.nemo.platforms ? this.nemo.platforms.filter(p => p.mode2 === 'attackOn').length : 0;
+        this.activityWeight += activePlatforms * 0.3; // Increase weight per active platform
+
+        // Ensure weight doesn't exceed a reasonable maximum (optional)
+        this.activityWeight = Math.min(this.activityWeight, 3);
+
+       this.angle += 0.05 * this.activityWeight; // Apply weighted rotation
+   }
 
     getTeethCount() {
         if (this.nemo.unitType === 'unit') return 2;

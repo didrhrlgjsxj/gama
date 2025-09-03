@@ -113,6 +113,7 @@ class Nemo {
         if (this.unitType === "unit") {
             this.moving = false;
             this.reverse = false; // 뒤로 이동 여부
+            this.isMoving = false; // Add isMoving property
             this.hp = 30;
         }
 
@@ -406,6 +407,7 @@ class Nemo {
         this.platforms.forEach(platform => platform.update());
 
         // 온핸드 무기가 사격 중인지 확인
+
         const isShooting = this.platforms.some(p =>
             p instanceof AttackPlatform && p.onHand && p.mode2 === 'attackOn');
 
@@ -460,6 +462,11 @@ class Nemo {
             this.x += Math.cos(this.angle) * this.maxSpeed * dir;
             this.y += Math.sin(this.angle) * this.maxSpeed * dir;
         }
+        
+        // Update isMoving based on whether the unit is moving or not
+        this.isMoving = (this.unitType === "unit" && this.moving && turned && !isShooting) ||
+                        this.unitType === "army" && this.moveVector && (this.moveVector.x || this.moveVector.y) ||
+                        this.destination !== null;
 
         if (this.shieldFlash > 0) this.shieldFlash--;
 
