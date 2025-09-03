@@ -411,6 +411,29 @@ class Nemo {
         const isShooting = this.platforms.some(p =>
             p instanceof AttackPlatform && p.onHand && p.mode2 === 'attackOn');
 
+        // 스쿼드 진형에 따른 이동 처리 (가장 높은 우선순위)
+        let movedByFormation = false;
+        if (this.squad && this.squad.squadDestination) {
+            // 스쿼드 중심의 이동량을 그대로 적용
+            this.x += this.squad.delta.x;
+            this.y += this.squad.delta.y;
+
+            // 진형 내 자신의 위치로 부드럽게 복귀
+            const formationPos = this.squad.formationPositions.get(this.id);
+            if (formationPos) {
+                const dx = formationPos.x - this.x;
+                const dy = formationPos.y - this.y;
+                const dist = Math.hypot(dx, dy);
+                if (dist > 1) {
+                    // 보정 이동은 스쿼드 이동 속도보다 빠르지 않게
+                    const correctionSpeed = Math.min(dist * 0.1, this.squad.squadSpeed * 1.5);
+                    this.x += (dx / dist) * correctionSpeed;
+                    this.y += (dy / dist) * correctionSpeed;
+                    this.targetAngle = this.squad.primaryDirection;
+                    movedByFormation = true;
+                }
+            }
+        }
     
 
         if (this.hp <= 0 && !this.dead) {
@@ -418,14 +441,14 @@ class Nemo {
         }
 
         if (this.unitType === "army") {
-            if (!isShooting && this.moveVector && (this.moveVector.x || this.moveVector.y)) {
+            if (!movedByFormation && !isShooting && this.moveVector && (this.moveVector.x || this.moveVector.y)) {
                 this.x += this.moveVector.x;
                 this.y += this.moveVector.y;
                 const mag = Math.hypot(this.moveVector.x, this.moveVector.y);
                 if (mag > 0.01) {
                     this.targetAngle = Math.atan2(this.moveVector.y, this.moveVector.x);
                 }
-            } else if (!isShooting && this.destination) {
+            } else if (!movedByFormation && !isShooting && this.destination) {
                 const dx = this.destination.x - this.x;
                 const dy = this.destination.y - this.y;
                 const dist = Math.hypot(dx, dy);
@@ -457,7 +480,7 @@ class Nemo {
 
         const turned = this.rotateTowards(this.targetAngle);
 
-        if (this.unitType === "unit" && this.moving && turned && !isShooting) {
+        if (!movedByFormation && this.unitType === "unit" && this.moving && turned && !isShooting) {
             const dir = this.reverse ? -1 : 1;
             this.x += Math.cos(this.angle) * this.maxSpeed * dir;
             this.y += Math.sin(this.angle) * this.maxSpeed * dir;
@@ -466,7 +489,7 @@ class Nemo {
         // Update isMoving based on whether the unit is moving or not
         this.isMoving = (this.unitType === "unit" && this.moving && turned && !isShooting) ||
                         this.unitType === "army" && this.moveVector && (this.moveVector.x || this.moveVector.y) ||
-                        this.destination !== null;
+                        this.destination !== null || movedByFormation;
 
         if (this.shieldFlash > 0) this.shieldFlash--;
 

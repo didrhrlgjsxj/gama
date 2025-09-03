@@ -508,32 +508,16 @@ canvas.addEventListener("mouseup", (e) => {
                 issueAttackMove([enemyN], {x: enemyN.x, y: enemyN.y});
             } else if (enemyS) {
                 issueAttackMove(enemyS.nemos, pos);
-            } else if (selectedSquads.length === 1 && selectedNemos.length === 0) {
-                const squad = selectedSquads[0];
-                const width = squad.bounds.w;
-                const height = squad.bounds.h;
-                const minX = pos.x - width / 2;
-                const minY = pos.y - height / 2;
-                const count = targets.length;
-                const cols = Math.ceil(Math.sqrt(count));
-                const rows = Math.ceil(count / cols);
-                for (let i = 0; i < count; i++) {
-                    const col = i % cols;
-                    const row = Math.floor(i / cols);
-                    const x = minX + (width * (col + 0.5)) / cols;
-                    const y = minY + (height * (row + 0.5)) / rows;
-                    targets[i].clearAttackMove();
-                    targets[i].setDestination(x, y);
-                    targets[i].ignoreEnemies = true;
-                    moveIndicators.push(new MoveIndicator(x, y, 40, 20, 'yellow'));
-                }
+            } else if (selectedSquads.length > 0) {
+                selectedSquads.forEach(squad => squad.setDestination(pos));
+                moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
             } else {
                 targets.forEach(n => {
                     n.clearAttackMove();
                     n.setDestination(pos.x, pos.y);
                     n.ignoreEnemies = true;
-                    moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
                 });
+                moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
             }
         } else {
             const minX = Math.min(moveRect.x1, moveRect.x2);
