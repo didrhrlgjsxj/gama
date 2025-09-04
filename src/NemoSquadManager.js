@@ -32,6 +32,9 @@ class NemoSquad {
         this.squadCenter = { x: 0, y: 0 }; // 스쿼드의 가상 중심
         this.squadSpeed = 3; // 스쿼드의 이동 속도
         this.delta = { x: 0, y: 0 }; // 프레임당 이동량
+        this.primaryCombatTarget = null; // 주 경계 대상
+        this.secondaryCombatTargets = []; // 보조 경계 대상 (나를 주 경계 대상으로 삼는 다른 스쿼드들)
+        this.isHeadOnBattle = false; // 정면 전투 상태
 
         this.targetDirection = 0; // 목표 이동 방향 (라디안)
         this.lastCenter = { x: 0, y: 0 };
@@ -133,12 +136,23 @@ class NemoSquad {
         const centerX = this.bounds.x + this.bounds.w / 2;
         const centerY = this.bounds.y + this.bounds.h / 2;
 
-        // 목표 지점이 없으면, 스쿼드의 실제 이동 방향(관성)을 따른다.
-        const dx = centerX - this.lastCenter.x;
-        const dy = centerY - this.lastCenter.y;
-        if (Math.hypot(dx, dy) > 1) { // 이동 거리가 충분할 때만 방향 갱신
+        if (this.primaryCombatTarget) {
+            // 주 경계 대상이 있으면, 대상을 향해 방향을 설정
+            const targetCenter = this.primaryCombatTarget.bounds;
+            const targetX = targetCenter.x + targetCenter.w / 2;
+            const targetY = targetCenter.y + targetCenter.h / 2;
+            const dx = targetX - centerX;
+            const dy = targetY - centerY;
             this.targetDirection = Math.atan2(dy, dx);
+        } else {
+            // 주 경계 대상이 없으면, 스쿼드의 실제 이동 방향(관성)을 따른다.
+            const dx = centerX - this.lastCenter.x;
+            const dy = centerY - this.lastCenter.y;
+            if (Math.hypot(dx, dy) > 1) { // 이동 거리가 충분할 때만 방향 갱신
+                this.targetDirection = Math.atan2(dy, dx);
+            }
         }
+
         this.lastCenter = { x: centerX, y: centerY };
 
         // 주 경계 방향을 부드럽게 회전
@@ -273,6 +287,81 @@ class NemoSquad {
         ctx.strokeRect(x, y, w, h);
         ctx.restore()
 
+        // 정면 전투 시 화살표 그리기
+        if (this.isHeadOnBattle && this.primaryCombatTarget) {
+            const myCenter = { x: this.bounds.x + this.bounds.w / 2, y: this.bounds.y + this.bounds.h / 2 };
+            const targetCenter = { x: this.primaryCombatTarget.bounds.x + this.primaryCombatTarget.bounds.w / 2, y: this.primaryCombatTarget.bounds.y + this.primaryCombatTarget.bounds.h / 2 };
+            const midPoint = { x: (myCenter.x + targetCenter.x) / 2, y: (myCenter.y + targetCenter.y) / 2 };
+
+            const angle = Math.atan2(targetCenter.y - myCenter.y, targetCenter.x - myCenter.x);
+            const arrowLength = 40;
+            const arrowWidth = 20;
+
+            ctx.save();
+            ctx.strokeStyle = 'white';
+            ctx.fillStyle = this.team === 'red' ? 'rgba(255, 100, 100, 0.7)' : 'rgba(100, 100, 255, 0.7)';
+            ctx.lineWidth = 8;
+
+            // 내 스쿼드에서 중간 지점으로 향하는 화살표
+            ctx.beginPath();
+            ctx.moveTo(myCenter.x, myCenter.y);
+            ctx.lineTo(midPoint.x, midPoint.y);
+            ctx.stroke();
+
+            // 화살표 머리
+            ctx.beginPath();
+            ctx.moveTo(midPoint.x, midPoint.y);
+            ctx.lineTo(midPoint.x - arrowLength * Math.cos(angle - Math.PI / 6), midPoint.y - arrowLength * Math.sin(angle - Math.PI / 6));
+            ctx.lineTo(midPoint.x - arrowLength * Math.cos(angle + Math.PI / 6), midPoint.y - arrowLength * Math.sin(angle + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // 보조 경계 대상 (방어적 교전)에 대한 화살표 그리기
+        this.secondaryCombatTargets.forEach(secondaryTarget => {
+            const myCenter = { x: this.bounds.x + this.bounds.w / 2, y: this.bounds.y + this.bounds.h / 2 };
+            const targetCenter = { x: secondaryTarget.bounds.x + secondaryTarget.bounds.w / 2, y: secondaryTarget.bounds.y + secondaryTarget.bounds.h / 2 };
+            
+            // 만나는 지점을 내 스쿼드 쪽에 가깝게 (20%)
+            const midPoint = { 
+                x: myCenter.x * 0.8 + targetCenter.x * 0.2, 
+                y: myCenter.y * 0.8 + targetCenter.y * 0.2 
+            };
+
+            const angleToMe = Math.atan2(myCenter.y - targetCenter.y, myCenter.x - targetCenter.x);
+            const arrowLength = 40;
+
+            ctx.save();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 6; // 정면 전투보다 약간 얇게
+
+            // 상대방(공격자)의 화살표 (뾰족함)
+            ctx.fillStyle = secondaryTarget.team === 'red' ? 'rgba(255, 100, 100, 0.7)' : 'rgba(100, 100, 255, 0.7)';
+            ctx.beginPath();
+            ctx.moveTo(targetCenter.x, targetCenter.y);
+            ctx.lineTo(midPoint.x, midPoint.y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(midPoint.x, midPoint.y);
+            ctx.lineTo(midPoint.x - arrowLength * Math.cos(angleToMe - Math.PI / 6), midPoint.y - arrowLength * Math.sin(angleToMe - Math.PI / 6));
+            ctx.lineTo(midPoint.x - arrowLength * Math.cos(angleToMe + Math.PI / 6), midPoint.y - arrowLength * Math.sin(angleToMe + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+
+            // 내(방어자) 화살표 (둥글게)
+            ctx.fillStyle = this.team === 'red' ? 'rgba(255, 100, 100, 0.7)' : 'rgba(100, 100, 255, 0.7)';
+            ctx.beginPath();
+            ctx.moveTo(myCenter.x, myCenter.y);
+            ctx.lineTo(midPoint.x, midPoint.y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(midPoint.x, midPoint.y, 15, angleToMe - Math.PI / 2, angleToMe + Math.PI / 2);
+            ctx.fill();
+
+            ctx.restore();
+        });
+
         // 주/보조 경계 방향 그리기
         if (this.nemos.length > 0) {
             const centerX = x + w / 2;
@@ -382,6 +471,7 @@ class NemoSquadManager {
         const oldSquads = this.squads;
         oldSquads.forEach(s => s.update()); // Draw 전에 방향 업데이트
         this.squads = [];
+        const recognitionRange = 800; // 스쿼드 인식 범위
         const visited = new Set();
         for (const nemo of nemos) {
             if (visited.has(nemo)) continue;
@@ -434,6 +524,47 @@ class NemoSquadManager {
             if (existing) squad.selected = existing.selected;
             this.squads.push(squad);
         }
+
+        // 스쿼드별 주 경계 대상 및 정면 전투 상태 설정
+        this.squads.forEach(squad => {
+            let nearestEnemySquad = null;
+            let minDistance = recognitionRange;
+
+            this.squads.forEach(otherSquad => {
+                if (squad.team !== otherSquad.team) {
+                    const squadCenterX = squad.bounds.x + squad.bounds.w / 2;
+                    const squadCenterY = squad.bounds.y + squad.bounds.h / 2;
+                    const otherSquadCenterX = otherSquad.bounds.x + otherSquad.bounds.w / 2;
+                    const otherSquadCenterY = otherSquad.bounds.y + otherSquad.bounds.h / 2;
+
+                    const distance = Math.hypot(squadCenterX - otherSquadCenterX, squadCenterY - otherSquadCenterY);
+
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestEnemySquad = otherSquad;
+                    }
+                }
+            });
+
+            squad.primaryCombatTarget = nearestEnemySquad;
+        });
+
+        // 정면 전투 상태 확인
+        this.squads.forEach(squad => {
+            squad.isHeadOnBattle = false;
+            squad.secondaryCombatTargets = [];
+
+            if (squad.primaryCombatTarget && squad.primaryCombatTarget.primaryCombatTarget === squad) {
+                squad.isHeadOnBattle = true;
+            }
+
+            // 나를 주 경계 대상으로 삼는 다른 스쿼드들을 찾는다.
+            this.squads.forEach(otherSquad => {
+                if (otherSquad.team !== squad.team && otherSquad.primaryCombatTarget === squad && !squad.isHeadOnBattle) {
+                    squad.secondaryCombatTargets.push(otherSquad);
+                }
+            });
+        });
     }
 
     draw(ctx) {
