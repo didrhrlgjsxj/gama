@@ -1,7 +1,7 @@
 // main.js
 import Nemo from './Nemo.js';  // Nemo.js에서 Nemo 클래스를 가져옵니다.
 import Grid from './Grid.js';
-import { NemoSquadManager } from './NemoSquadManager.js';
+import { SquadManager, Squad } from './NemoSquadManager.js';
 import MoveIndicator from './MoveIndicator.js';
 import { MineralPatch, MineralPiece, Storage } from './Resource.js';
 import { Worker } from './Nemo.js';
@@ -32,7 +32,7 @@ const backgroundHeight = 1200; // 배경 높이 (원하는 크기로 설정)
 
 // Nemo 보다 약간 작은 크기의 그리드를 생성
 const mainGrid = new Grid(40);
-const squadManager = new NemoSquadManager(mainGrid.cellSize);
+const squadManager = new SquadManager(mainGrid.cellSize);
 
 // 자원 및 작업자 관련 변수
 TeamManagers.blue.minerals = 0;
@@ -114,13 +114,14 @@ function updateCamera() {
 
 // 임시 배치용 네모
 let ghostNemo = null;
+// 임시 배치용 스쿼드
+let ghostSquad = null;
 // 임시 배치용 작업자
 let ghostWorker = null;
 // 임시 배치용 건물
 let ghostBuilding = null;
 
 const nemos = [];
-squadManager.updateSquads(nemos);
 let selectedNemos = [];
 let selectedSquads = [];
 let selectedWorkers = [];
@@ -155,6 +156,10 @@ window.addEventListener('keyup', (e) => {
     }
     if (e.key === 'm' || e.key === 'M') {
         mineKey = false;
+        e.preventDefault();
+    }
+    if (e.key === 'x' || e.key === 'X') {
+        squadManager.mergeSelectedSquads();
         e.preventDefault();
     }
 });
@@ -263,22 +268,44 @@ function issueAttackMove(targets, pos) {
     if (pos) moveIndicators.push(new MoveIndicator(pos.x, pos.y));
 }
 
-function createGhost(type, team, hasShield = true) {
+function createGhostSquad(squadType, team) {
+    ghostWorker = null;
+    ghostBuilding = null;
+
     const { x, y } = worldMouse();
-    let platformTypes;
-    if (type === "army") {
-        platformTypes = ["move", "attack", "attack"]; // 공격 플랫폼 2개
-    } else {
-        platformTypes = ["attack"];
+    const squadNemos = [];
+    const numUnits = 3;
+
+    for (let i = 0; i < numUnits; i++) {
+        // 유닛들을 소환 위치 주변에 약간 흩어지게 배치
+        const offsetX = (Math.random() - 0.5) * 80;
+        const offsetY = (Math.random() - 0.5) * 80;
+        let newNemo;
+
+        if (squadType === 'A') { // A형: unit 3기
+            newNemo = new Nemo(x + offsetX, y + offsetY, team, ["attack"], "unit", "sqaudio", "ranged", false);
+        } else { // B형: sqaudio 3기
+            newNemo = new Nemo(x + offsetX, y + offsetY, team, ["move", "attack", "attack"], "army", "sqaudio", "ranged", true);
+        }
+        newNemo.ghost = true;
+        squadNemos.push(newNemo);
     }
-    ghostNemo = new Nemo(x, y, team, platformTypes, type, "sqaudio", "ranged", hasShield);
+
+    ghostSquad = new Squad(squadNemos, team, mainGrid.cellSize);
+    ghostSquad.squadType = squadType; // 스폰 시 타입을 알기 위해 저장
+    squadNemos.forEach(n => n.squad = ghostSquad);
 }
 
-redUnitBtn.addEventListener("click", () => createGhost("unit", "red", false));
-redArmyBtn.addEventListener("click", () => createGhost("army", "red", true));
-blueUnitBtn.addEventListener("click", () => createGhost("unit", "blue", false));
-blueArmyBtn.addEventListener("click", () => createGhost("army", "blue", true));
+
+redUnitBtn.addEventListener("click", () => createGhostSquad("A", "red"));
+redArmyBtn.addEventListener("click", () => createGhostSquad("B", "red"));
+blueUnitBtn.addEventListener("click", () => createGhostSquad("A", "blue"));
+blueArmyBtn.addEventListener("click", () => createGhostSquad("B", "blue"));
+
 function createWorkerGhost(type) {
+    ghostNemo = null; // 다른 고스트 객체 비활성화
+    ghostBuilding = null;
+    ghostSquad = null;
     const { x, y } = worldMouse();
     ghostWorker = new Worker(x, y, type);
     ghostWorker.ghost = true;
@@ -288,6 +315,9 @@ workerABtn.addEventListener("click", () => createWorkerGhost('A'));
 workerBBtn.addEventListener("click", () => createWorkerGhost('B'));
 document.querySelectorAll('.buildBtn').forEach(btn => {
     btn.addEventListener('click', () => {
+        ghostNemo = null; // 다른 고스트 객체 비활성화
+        ghostSquad = null;
+        ghostWorker = null;
         const type = btn.getAttribute('data-type');
         const { x, y } = worldMouse();
         const pos = mainGrid.snap(x, y);
@@ -335,10 +365,19 @@ canvas.addEventListener("mousedown", (e) => {
             ghostBuilding = null;
             pendingBuildWorker = null;
             pendingBuildType = null;
-        } else if (ghostNemo) {
-            nemos.push(ghostNemo);
-            squadManager.updateSquads(nemos);
-            ghostNemo = null;
+        } else if (ghostSquad) {
+            const squadNemos = [];
+            ghostSquad.nemos.forEach(ghostNemo => {
+                ghostNemo.ghost = false;
+                squadNemos.push(ghostNemo);
+                nemos.push(ghostNemo);
+            });
+
+            const newSquad = new Squad(squadNemos, ghostSquad.team, mainGrid.cellSize);
+            squadNemos.forEach(n => n.squad = newSquad);
+            squadManager.squads.push(newSquad);
+
+            ghostSquad = null;
         } else {
             isSelecting = true;
             selectionStart = pos;
@@ -607,23 +646,25 @@ function gameLoop() {
             if (idx !== -1) selectedWorkers.splice(idx, 1);
         }
     }
-    selectedSquads = selectedSquads.filter(sq =>
-        sq.nemos.some(n => !n.dead)
-    );
+    // 죽은 네모가 포함된 스쿼드 정리
+    squadManager.squads.forEach(squad => {
+        squad.nemos = squad.nemos.filter(n => !n.dead);
+    });
+    squadManager.squads = squadManager.squads.filter(squad => squad.nemos.length > 0);
     squadManager.updateSquads(nemos);
-    selectedSquads = selectedSquads.map(old => {
-        return squadManager.squads.find(s => s.idString === old.idString) || null;
-    }).filter(s => s);
 
     // 고스트 네모 및 작업자 위치 갱신
-    if (ghostNemo) {
+    if (ghostSquad) {
         const { x, y } = worldMouse();
-        ghostNemo.x = x;
-        ghostNemo.y = y;
-        ghostNemo.platforms.forEach(p => {
-            p.x = ghostNemo.x + Math.cos(p.angle) * p.baseDistance;
-            p.y = ghostNemo.y + Math.sin(p.angle) * p.baseDistance;
+        const currentCenter = ghostSquad.squadCenter;
+        const dx = x - currentCenter.x;
+        const dy = y - currentCenter.y;
+
+        ghostSquad.nemos.forEach(n => {
+            n.x += dx;
+            n.y += dy;
         });
+        ghostSquad.update(); // 바운드 및 중심 업데이트
     }
     if (ghostWorker) {
         const { x, y } = worldMouse();
@@ -679,7 +720,13 @@ function gameLoop() {
     for (let i = deathEffects.length - 1; i >= 0; i--) {
         if (deathEffects[i].isDone()) deathEffects.splice(i, 1);
     }
-    if (ghostNemo) ghostNemo.draw(ctx);
+    if (ghostSquad) {
+        ctx.save();
+        ctx.globalAlpha = 0.5;
+        ghostSquad.nemos.forEach(n => n.draw(ctx));
+        ghostSquad.draw(ctx);
+        ctx.restore();
+    }
     if (ghostWorker) ghostWorker.draw(ctx);
     if (ghostBuilding) ghostBuilding.draw(ctx);
     if (selectionRect) {

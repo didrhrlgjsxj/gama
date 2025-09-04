@@ -89,7 +89,7 @@ class Nemo {
         this.unitType = unitType;
         this.armyType = armyType;
         this.role = role;
-        this.squad = null; // reference to NemoSquad
+        this.squad = null; // reference to Squad
 
         this.hp = 45;
         this.shieldMaxHp = hasShield ? 10 : 0;
@@ -98,6 +98,7 @@ class Nemo {
         this.dead = false;      // 사망 여부
         this.selected = false;  // 선택 여부
         this.destination = null; // 이동 목표 위치
+        this.ghost = false;
         this.attackMove = false;
         this.ignoreEnemies = false; // 이동 중 전투 금지 플래그
         this.attackTargets = [];
@@ -545,6 +546,7 @@ class Nemo {
         }
 
         ctx.save();
+        if (this.ghost) ctx.globalAlpha = 0.5;
         if (this.selected) {
             ctx.shadowColor = this.borderColor;
             ctx.shadowBlur = 10;

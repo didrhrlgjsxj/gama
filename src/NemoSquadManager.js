@@ -1,8 +1,8 @@
-// NemoSquadManager.js
+// SquadManager.js
 
 // This file provides a small manager that automatically groups Nemos
-// by distance. Groups are called "Nemo_squad".  Nemos within
-// 5 grid cells from each other (considering chain connection) form a
+// by distance. Groups are called "squad".  Nemos within
+// 5 grid cells from each other (considering chain connection) form a squad.
 // squad.  The squad size is limited so that its bounding box does not
 // exceed 20 grid cells.
 const SquadSizes = {
@@ -20,7 +20,7 @@ function lerpAngle(start, end, amount) {
     return start + difference * amount;
 }
 
-class NemoSquad {
+class Squad {
     constructor(nemos = [], team = 'blue', cellSize = 40) {
         this.nemos = nemos;
         this.team = team;
@@ -49,8 +49,14 @@ class NemoSquad {
         this.updateBounds(); // 초기 lastCenter 설정
    }
 
+   addNemos(newNemos) {
+       this.nemos.push(...newNemos);
+       newNemos.forEach(n => n.squad = this);
+   }
+
    update() {
        this.updateBounds();
+       this.squadCenter = { x: this.bounds.x + this.bounds.w / 2, y: this.bounds.y + this.bounds.h / 2 };
        this.updateSquadMovement();
        this.updateDirections();
        this.updateFormation();
@@ -118,15 +124,15 @@ class NemoSquad {
         // 스쿼드 타입에 따라 회전 속도 조절
         switch (this.type) {
             case SquadSizes.COMPANY:
-                return 0.08; // 가장 느림
+                return 0.3; // 가장 느림
             case SquadSizes.PLATOON:
-                return 0.12;
+                return 0.5;
             case SquadSizes.TROOP:
-                return 2;
+                return 0.9;
             case SquadSizes.SQUAD:
-                return 3; // 가장 빠름
+                return 1.3; // 가장 빠름
             default:
-                return 0.2;
+                return 1;
         }
     }
 
@@ -378,25 +384,29 @@ class NemoSquad {
             ctx.moveTo(centerX, centerY);
             ctx.lineTo(centerX + Math.cos(this.targetDirection) * lineLength * 1.2, centerY + Math.sin(this.targetDirection) * lineLength * 1.2);
             ctx.stroke();
+            ctx.setLineDash([]); // 점선 초기화
 
-            // 주 경계 방향 (초록색)
-            ctx.strokeStyle = 'green';
-            ctx.lineWidth = 3;
-            ctx.beginPath();
-            ctx.moveTo(centerX, centerY);
-            ctx.lineTo(centerX + Math.cos(this.primaryDirection) * lineLength, centerY + Math.sin(this.primaryDirection) * lineLength);
-            ctx.stroke();
-
-            // 보조 경계 방향 (주황색)
-            ctx.strokeStyle = 'orange';
-            ctx.lineWidth = 2;
-            this.secondaryDirections.forEach(dir => {
-                const angle = dir.currentAngle;
+            // 주 경계 대상이 없을 때만 주/보조 경계 방향을 그립니다.
+            if (!this.primaryCombatTarget) {
+                // 주 경계 방향 (초록색)
+                ctx.strokeStyle = 'green';
+                ctx.lineWidth = 3;
                 ctx.beginPath();
                 ctx.moveTo(centerX, centerY);
-                ctx.lineTo(centerX + Math.cos(angle) * lineLength, centerY + Math.sin(angle) * lineLength);
+                ctx.lineTo(centerX + Math.cos(this.primaryDirection) * lineLength, centerY + Math.sin(this.primaryDirection) * lineLength);
                 ctx.stroke();
-            });
+
+                // 보조 경계 방향 (주황색)
+                ctx.strokeStyle = 'orange';
+                ctx.lineWidth = 2;
+                this.secondaryDirections.forEach(dir => {
+                    const angle = dir.currentAngle;
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+                    ctx.lineTo(centerX + Math.cos(angle) * lineLength, centerY + Math.sin(angle) * lineLength);
+                    ctx.stroke();
+                });
+            }
             ctx.restore();
         }
         
@@ -443,7 +453,7 @@ class NemoSquad {
     }
 }
 
-class NemoSquadManager {
+class SquadManager {
     constructor(gridCellSize = 40) {
         this.squads = [];
         this.cellSize = gridCellSize;
@@ -466,64 +476,31 @@ class NemoSquadManager {
             // TODO: targetMember.takeDamage(damage);
         }    }
 
+    mergeSelectedSquads() {
+        const selected = this.squads.filter(s => s.selected);
+        if (selected.length < 2) return;
+
+        const newNemos = [];
+        const team = selected[0].team;
+
+        selected.forEach(s => {
+            newNemos.push(...s.nemos);
+            s.nemos = []; // 기존 스쿼드에서 네모 제거
+        });
+
+        // 선택 해제 및 기존 스쿼드 제거
+        this.squads = this.squads.filter(s => !s.selected);
+
+        const newSquad = new Squad(newNemos, team, this.cellSize);
+        newSquad.nemos.forEach(n => n.squad = newSquad);
+        newSquad.selected = true;
+        this.squads.push(newSquad);
+    }
+
     // Build squads from given nemos array
     updateSquads(nemos) {
-        const oldSquads = this.squads;
-        oldSquads.forEach(s => s.update()); // Draw 전에 방향 업데이트
-        this.squads = [];
         const recognitionRange = 800; // 스쿼드 인식 범위
-        const visited = new Set();
-        for (const nemo of nemos) {
-            if (visited.has(nemo)) continue;
-            const queue = [nemo];
-            const squadNemos = [];
-            visited.add(nemo);
-            while (queue.length) {
-                const current = queue.pop();
-                squadNemos.push(current);
-                for (const other of nemos) {
-                    if (!visited.has(other) && other.team === nemo.team) {
-                        const dist = Math.hypot(current.x - other.x, current.y - other.y);
-                        if (dist <= this.linkDist) {
-                            queue.push(other);
-                            visited.add(other);
-                        }
-                    }
-                }
-            }
-            const squad = new NemoSquad(squadNemos, nemo.team, this.cellSize);
-            squad.nemos.forEach(n => n.squad = squad);
-            squad.idString = squad.nemos.map(n => n.id).sort((a,b) => a-b).join(',');
-            const old = oldSquads.find(s => s.idString === squad.idString);
-            if (old) squad.selected = old.selected;
-            squad.update(); // 새로 생성된 스쿼드도 방향 업데이트
-            // enforce max group size
-            while (squad.bounds && (squad.bounds.w > this.maxGroup || squad.bounds.h > this.maxGroup)) {
-                // remove farthest nemo until size fits
-                let cx = squad.bounds.x + squad.bounds.w / 2;
-                let cy = squad.bounds.y + squad.bounds.h / 2;
-                let farIndex = -1;
-                let farDist = -1;
-                squad.nemos.forEach((n, idx) => {
-                    const d = Math.hypot(n.x - cx, n.y - cy);
-                    if (d > farDist) { farDist = d; farIndex = idx; }
-                });
-                const removed = squad.nemos.splice(farIndex, 1);
-                if (squad.squadDestination) removed[0].setDestination(squad.squadDestination.x, squad.squadDestination.y);
-                squad.update();
-                const extra = new NemoSquad(removed, nemo.team, this.cellSize);
-                extra.idString = extra.nemos.map(n => n.id).sort((a,b) => a-b).join(',');
-                const oldExtra = oldSquads.find(s => s.idString === extra.idString);
-                if (oldExtra) extra.selected = oldExtra.selected;
-                extra.update();
-                this.squads.push(extra);
-            }
-            squad.update();
-            squad.idString = squad.nemos.map(n => n.id).sort((a,b) => a-b).join(',');
-            const existing = oldSquads.find(s => s.idString === squad.idString);
-            if (existing) squad.selected = existing.selected;
-            this.squads.push(squad);
-        }
+        this.squads.forEach(s => s.update());
 
         // 스쿼드별 주 경계 대상 및 정면 전투 상태 설정
         this.squads.forEach(squad => {
@@ -576,4 +553,4 @@ class NemoSquadManager {
 
 
 export { SquadSizes };
-export { NemoSquadManager, NemoSquad };
+export { SquadManager, Squad };
