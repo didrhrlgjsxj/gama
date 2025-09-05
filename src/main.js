@@ -159,12 +159,7 @@ window.addEventListener('keyup', (e) => {
         e.preventDefault();
     }
     if (e.key === 'x' || e.key === 'X') {
-        const newSquad = squadManager.mergeSelectedSquads();
-        if (newSquad) {
-            selectedSquads = [newSquad];
-            selectedNemos = [];
-            selectedWorkers = [];
-        }
+        squadManager.mergeSelectedSquads();
         e.preventDefault();
     }
 });
@@ -428,9 +423,7 @@ canvas.addEventListener("mouseup", (e) => {
 
         // 드래그 거리가 거의 없으면 클릭으로 간주
         if (dragWidth < 5 && dragHeight < 5) {
-            const shiftPressed = e.shiftKey;
-
-            if (selectionStartedWithSelection && !shiftPressed) {
+            if (selectionStartedWithSelection) {
                 if (!attackKey) {
                     selectedNemos.forEach(n => (n.selected = false));
                     selectedSquads.forEach(s => (s.selected = false));
@@ -445,7 +438,7 @@ canvas.addEventListener("mouseup", (e) => {
                     });
                     moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
                 }
-            }
+            } else {
             let clickedNemo = null;
             for (const nemo of nemos) {
                 if (
@@ -471,21 +464,19 @@ canvas.addEventListener("mouseup", (e) => {
                 }
             }
 
-            if (!shiftPressed) {
-                selectedNemos.forEach(n => (n.selected = false));
-                selectedWorkers.forEach(w => (w.selected = false));
-                selectedSquads.forEach(s => (s.selected = false));
-                selectedNemos = [];
-                selectedWorkers = [];
-                selectedSquads = [];
-            }
+            selectedNemos.forEach(n => (n.selected = false));
+            selectedWorkers.forEach(w => (w.selected = false));
+            selectedSquads.forEach(s => (s.selected = false));
+            selectedNemos = [];
+            selectedWorkers = [];
+            selectedSquads = [];
 
             if (clickedNemo) {
                 clickedNemo.selected = true;
-                if (!selectedNemos.includes(clickedNemo)) selectedNemos.push(clickedNemo);
+                selectedNemos.push(clickedNemo);
             } else if (clickedWorker) {
                 clickedWorker.selected = true;
-                if (!selectedWorkers.includes(clickedWorker)) selectedWorkers.push(clickedWorker);
+                selectedWorkers.push(clickedWorker);
             } else {
                 let clickedSquad = null;
                 for (const squad of squadManager.squads) {
@@ -497,29 +488,31 @@ canvas.addEventListener("mouseup", (e) => {
                 }
                 if (clickedSquad) {
                     clickedSquad.selected = true;
-                    if (!selectedSquads.includes(clickedSquad)) selectedSquads.push(clickedSquad);
+                    selectedSquads.push(clickedSquad);
                 }
+            }
             }
         } else {
             const minX = Math.min(selectionRect.x1, selectionRect.x2);
             const maxX = Math.max(selectionRect.x1, selectionRect.x2);
             const minY = Math.min(selectionRect.y1, selectionRect.y2);
             const maxY = Math.max(selectionRect.y1, selectionRect.y2);
-
-            if (!e.shiftKey) {
-                selectedNemos.forEach(n => (n.selected = false));
-                selectedWorkers.forEach(w => (w.selected = false));
-                selectedSquads.forEach(s => (s.selected = false));
-                selectedNemos = [];
-                selectedWorkers = [];
-                selectedSquads = [];
-            }
-
-            const newlySelectedSquads = [];
+            selectedNemos.forEach(n => (n.selected = false));
+            selectedWorkers.forEach(w => (w.selected = false));
+            selectedSquads.forEach(s => (s.selected = false));
+            selectedNemos = [];
+            selectedWorkers = [];
+            selectedSquads = [];
+            nemos.forEach(nemo => {
+                if (nemo.x >= minX && nemo.x <= maxX && nemo.y >= minY && nemo.y <= maxY) {
+                    nemo.selected = true;
+                    selectedNemos.push(nemo);
+                }
+            });
             workers.forEach(w => {
                 if (w.x >= minX && w.x <= maxX && w.y >= minY && w.y <= maxY) {
                     w.selected = true;
-                    if (!selectedWorkers.includes(w)) selectedWorkers.push(w);
+                    selectedWorkers.push(w);
                 }
             });
             squadManager.squads.forEach(squad => {
@@ -528,17 +521,8 @@ canvas.addEventListener("mouseup", (e) => {
                     const hasSelected = squad.nemos.some(n => selectedNemos.includes(n));
                     if (!hasSelected) {
                         squad.selected = true;
-                        if (!selectedSquads.includes(squad)) newlySelectedSquads.push(squad);
+                        selectedSquads.push(squad);
                     }
-                }
-            });
-            selectedSquads.push(...newlySelectedSquads);
-
-            const selectedSquadNemos = new Set(selectedSquads.flatMap(s => s.nemos));
-            nemos.forEach(nemo => {
-                if (!selectedSquadNemos.has(nemo) && nemo.x >= minX && nemo.x <= maxX && nemo.y >= minY && nemo.y <= maxY) {
-                    nemo.selected = true;
-                    if (!selectedNemos.includes(nemo)) selectedNemos.push(nemo);
                 }
             });
         }
@@ -547,7 +531,7 @@ canvas.addEventListener("mouseup", (e) => {
         selectionStartedWithSelection = false;
     }
 
-    if (e.button === 2) { // isMoveDragging 조건 제거
+    if (isMoveDragging && e.button === 2) {
         isMoveDragging = false;
         const pos = worldMouse();
         moveRect.x2 = pos.x;
@@ -556,24 +540,40 @@ canvas.addEventListener("mouseup", (e) => {
         const dragH = Math.abs(moveRect.y2 - moveRect.y1);
         const targets = getAllSelectedNemos();
         const team = targets[0] ? targets[0].team : null;
-        if (dragW < 5 && dragH < 5) {
+
+        // 드래그 거리가 거의 없으면(클릭), 유닛들이 현재 포메이션을 유지한 채로 이동하도록 처리합니다.
+        // 드래그를 하면 해당 드래그 영역에 맞춰 유닛들이 배치됩니다.
+        if (dragW < 5 && dragH < 5) { // 클릭으로 간주
             const enemyN = enemyNemoAt(pos, team);
             const enemyS = enemySquadAt(pos, team);
+
             if (enemyN) {
                 issueAttackMove([enemyN], {x: enemyN.x, y: enemyN.y});
             } else if (enemyS) {
                 issueAttackMove(enemyS.nemos, pos);
-            } else if (selectedSquads.length > 0) {
-                selectedSquads.forEach(squad => {
-                    squad.nemos.forEach(n => n.destination = null); // 이전 목적지 확실히 제거
-                    squad.setDestination(pos);
-                });
-                moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
             } else {
-                targets.forEach(n => {
-                    n.setDestination(pos.x, pos.y);
-                });
-                moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
+                // 클릭 지점을 중심으로 유닛들의 현재 상대적 위치를 유지하며 목표 지점 설정
+                if (targets.length > 0) {
+                    // 유닛들의 현재 위치의 중심점을 계산합니다.
+                    const currentCenter = targets.reduce((acc, n) => ({ x: acc.x + n.x, y: acc.y + n.y }), { x: 0, y: 0 });
+                    currentCenter.x /= targets.length;
+                    currentCenter.y /= targets.length;
+
+                    // 각 유닛에 대해 새로운 목표 지점을 계산합니다.
+                    targets.forEach(n => {
+                        // 현재 중심점으로부터의 상대적 위치
+                        const relX = n.x - currentCenter.x;
+                        const relY = n.y - currentCenter.y;
+                        // 클릭 지점을 새로운 중심으로 하여 목표 위치 설정
+                        const destX = pos.x + relX;
+                        const destY = pos.y + relY;
+
+                        n.clearAttackMove();
+                        n.setDestination(destX, destY);
+                        n.ignoreEnemies = true;
+                    });
+                    moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
+                }
             }
         } else {
             const minX = Math.min(moveRect.x1, moveRect.x2);
