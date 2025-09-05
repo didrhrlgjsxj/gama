@@ -24,7 +24,8 @@ class ShatterEffect {
     }
 
     draw(ctx) {
-        const alpha = 1 - this.age / this.duration;
+        // Clamp alpha to ensure it doesn't become negative
+        const alpha = Math.max(0, 1 - this.age / this.duration);
         ctx.save();
         ctx.globalAlpha = alpha;
         ctx.fillStyle = this.color;
