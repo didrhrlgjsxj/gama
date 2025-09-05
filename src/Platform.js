@@ -123,18 +123,18 @@ class MovePlatform extends Platform {
         }
 
         // 네모 이동: currentDistance가 기본거리보다 클 경우
-        if (this.currentDistance > this.baseDistance && this.parent.destination && this.destination) { // 네모 이동
-            const moveMagnitude = (this.currentDistance - this.baseDistance) * this.parent.maxSpeed / 50;
-            const pullAngle = Math.atan2(this.y - this.parent.y, this.x - this.parent.x);
-            this.parent.moveVector = {
-                x: Math.cos(pullAngle) * moveMagnitude,
-                y: Math.sin(pullAngle) * moveMagnitude
-            };
-            this.moveMagnitude = moveMagnitude; // moveMagnitude를 저장 (선 두께 결정에 사용)
-        } else {
-            this.parent.moveVector = { x: 0, y: 0 };
-            this.moveMagnitude = 0;
-        }
+        // if (this.currentDistance > this.baseDistance && this.parent.destination && this.destination) { // 네모 이동
+        //     const moveMagnitude = (this.currentDistance - this.baseDistance) * this.parent.maxSpeed / 50;
+        //     const pullAngle = Math.atan2(this.y - this.parent.y, this.x - this.parent.x);
+        //     this.parent.moveVector = {
+        //         x: Math.cos(pullAngle) * moveMagnitude,
+        //         y: Math.sin(pullAngle) * moveMagnitude
+        //     };
+        //     this.moveMagnitude = moveMagnitude; // moveMagnitude를 저장 (선 두께 결정에 사용)
+        // } else {
+        //     this.parent.moveVector = { x: 0, y: 0 };
+        //     this.moveMagnitude = 0;
+        // }
         
     }
 

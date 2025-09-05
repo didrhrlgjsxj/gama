@@ -64,22 +64,18 @@ class Squad {
 
    setDestination(pos) {
        this.squadDestination = pos;
-       this.nemos.forEach(n => {
-           n.clearAttackMove();
-           n.destination = null; // 개별 목적지 초기화
-           n.ignoreEnemies = true; // 이동 명령 시 적 무시
-       });
        // 이동 명령 시 기존 전투 상태 초기화
        this.primaryCombatTarget = null;
        this.secondaryCombatTargets = [];
        this.isHeadOnBattle = false;
-       // 이동 명령 시, 스쿼드의 현재 중심을 가상 중심으로 설정
-       this.squadCenter.x = this.bounds.x + this.bounds.w / 2;
-       this.squadCenter.y = this.bounds.y + this.bounds.h / 2;
+
+       // 소속된 모든 네모의 현재 명령을 초기화
+       this.nemos.forEach(n => {
+           n.clearAllCommands();
+       });
    }
 
    updateSquadMovement() {
-       this.delta = { x: 0, y: 0 };
        if (!this.squadDestination) return;
 
        // 스쿼드의 실제 중심(바운딩 박스 기준)이 목표에 도달했는지 확인
@@ -89,9 +85,15 @@ class Squad {
        const dy = this.squadDestination.y - currentCenterY;
        const dist = Math.hypot(dx, dy);
 
-       if (dist <= this.squadSpeed * 2) { // 도착 판정 거리 (유닛들이 멈출 수 있도록 여유를 줌)
-           // 목표 도착 시 squadDestination 초기화
+       // 모든 유닛이 대략 목표 지점 근처에 도달했는지 확인
+       const arrivalThreshold = this.cellSize * 2; // 도착 판정 거리
+       if (dist <= arrivalThreshold) {
            this.squadDestination = null;
+           // 스쿼드 이동이 끝났으므로, 각 유닛의 진형 추적도 중지
+           this.nemos.forEach(n => {
+               n.clearAllCommands(); // 진형 위치 및 목적지 초기화
+               n.destination = null;
+           });
        }
    }
 
@@ -174,7 +176,7 @@ class Squad {
 
     updateFormation() {
         if (!this.squadDestination) {
-            if (this.formationPositions.size > 0) this.nemos.forEach(n => n.destination = null);
+            // 이동 명령이 없으면 진형 위치를 계산할 필요 없음
             this.formationPositions.clear();
             return;
         }

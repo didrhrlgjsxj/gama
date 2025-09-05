@@ -197,10 +197,25 @@ class Nemo {
         };
 
         this.setDestination = (x, y) => {
+            this.clearAllCommands();
             this.destination = { x, y };
+            this.ignoreEnemies = true; // 일반 이동 명령은 목표 도달까지 적을 무시
+        };
+
+        this.clearAllCommands = () => {
+            this.destination = null;
+            this.attackMove = false;
+            this.attackTargets = [];
+            this.attackMovePos = null;
+            this.ignoreEnemies = false;
+            this.nearestEnemy = null;
+            if (this.unitType === "unit") {
+                this.moving = false;
+            }
             const moveP = this.platforms.find(p => p instanceof MovePlatform);
             if (moveP) {
-                moveP.destination = { x, y };
+                moveP.destination = null;
+                moveP.mode = "return";
             }
         };
 
@@ -210,6 +225,7 @@ class Nemo {
                     if (n !== this) n.startAttackMove(targets, pos, false);
                 });
             }
+            this.destination = null; // 기존 이동 명령 취소
             this.attackMove = true;
             this.ignoreEnemies = false;
             this.attackTargets = targets;
@@ -308,177 +324,112 @@ class Nemo {
 
     // 적과의 거리나 HP를 기준으로 상태를 업데이트
     update(enemies) {
-        const prevX = this.x;
-        const prevY = this.y;
+        // 1. 상태 결정 및 목표(destination) 설정
 
-        // 스쿼드 진형에 따른 이동 처리 (가장 높은 우선순위)
-        let movedByFormation = false;
+        // 1-A. 스쿼드 명령이 최우선
         if (this.squad && this.squad.squadDestination) {
             const formationPos = this.squad.formationPositions.get(this.id);
             if (formationPos) {
-                // 진형 내 자신의 위치를 새로운 목적지로 설정
                 this.destination = formationPos;
                 this.targetAngle = this.squad.primaryDirection;
-                movedByFormation = true;
+                this.ignoreEnemies = true; // 진형 유지 중에는 무조건 적 무시
             }
         }
-
-        // 현재 시점의 모든 적 목록 저장 (AttackPlatform 등에서 사용)
-        this.allEnemies = enemies;
-
-        // 공격 명령이 내려진 경우 우선 공격 대상 목록에서 가장 가까운 적을 찾는다
-        if (this.attackMove) {
-            this.attackTargets = this.attackTargets.filter(t => !t.dead);
-            const pool = this.attackTargets.length > 0
-                ? this.attackTargets
-                : enemies.filter(e => {
-                    if (e === this || e.team === this.team) return false;
-                    const d = Math.hypot(e.x - this.x, e.y - this.y);
-                    return d <= this.recognitionRange;
-                });
-            let nearest = null;
-            let minDist = Infinity;
-            pool.forEach(t => {
-                const d = Math.hypot(t.x - this.x, t.y - this.y);
-                if (d < minDist) { minDist = d; nearest = t; }
-            });
-            this.nearestEnemy = nearest;
-            if (nearest) {
-                // 목표까지 이동하되 사정거리에 도달하면 멈춘다
-                const dx = nearest.x - this.x;
-                const dy = nearest.y - this.y;
-                const dist = Math.hypot(dx, dy);
-                this.targetAngle = Math.atan2(dy, dx);
-
-                // 모든 공격 플랫폼이 닿을 수 있는 거리를 고려해 약간 가까이 멈춘다
-                const buffer = 20; // 계산 오차를 줄이기 위한 여유 거리
-                const desiredRange = this.getMinAttackDistance(this.targetAngle) - buffer;
-
-                if (dist > desiredRange) {
-                    this.setDestination(nearest.x, nearest.y);
-                } else {
-                    this.destination = null;
-                }
-            } else if (this.attackMovePos) {
-                // 지정 위치로 이동
-                const dx = this.attackMovePos.x - this.x;
-                const dy = this.attackMovePos.y - this.y;
-                const dist = Math.hypot(dx, dy);
-                this.targetAngle = Math.atan2(dy, dx);
-                if (dist > 5) {
-                    this.setDestination(this.attackMovePos.x, this.attackMovePos.y);
-                } else {
-                    this.clearAttackMove();
-                }
-            } else {
-                this.clearAttackMove();
-            }
-        } else {
-            // 일반 상태에서는 주변의 가장 가까운 적을 추적
-            this.nearestEnemy = this.findNearestEnemy(enemies);
-            if (this.nearestEnemy) {
-                const dx = this.nearestEnemy.x - this.x;
-                const dy = this.nearestEnemy.y - this.y;
-                const dist = Math.hypot(dx, dy);
-                if (!this.attackMove && !this.ignoreEnemies && dist <= this.recognitionRange) {
-                    this.startAttackMove([this.nearestEnemy], {x: this.nearestEnemy.x, y: this.nearestEnemy.y});
-                }
-                if (this.unitType === "unit") {
-                    this.targetAngle = Math.atan2(dy, dx);
-                }
-            }
-        }
-
-        if (this.destination && !movedByFormation) {
-            const dx = this.destination.x - this.x;
-            const dy = this.destination.y - this.y;
-            const dist = Math.hypot(dx, dy);
-            const ang = Math.atan2(dy, dx);
-            this.targetAngle = ang;
-            this.rotateTowards(this.targetAngle);
-            const step = Math.min(this.maxSpeed, dist);
-            this.x += Math.cos(this.angle) * step;
-            this.y += Math.sin(this.angle) * step;
-            if (dist <= this.maxSpeed) {
-                this.x = this.destination.x;
-                this.y = this.destination.y;
-                this.destination = null;
+        // 1-B. 스쿼드 명령이 없을 때, 다른 명령 처리
+        else {
+            // 이동 후 적 무시 상태 해제
+            if (this.ignoreEnemies && !this.destination) {
                 this.ignoreEnemies = false;
-                const moveP = this.platforms.find(p => p instanceof MovePlatform);
-                if (moveP) {
-                    moveP.destination = null;
-                    moveP.mode = "return";
+            }
+
+            // 공격 명령(attackMove) 처리
+            if (this.attackMove) {
+                this.attackTargets = this.attackTargets.filter(t => !t.dead);
+                const pool = this.attackTargets.length > 0
+                    ? this.attackTargets
+                    : enemies.filter(e => e.team !== this.team && Math.hypot(e.x - this.x, e.y - this.y) <= this.recognitionRange);
+
+                let nearest = null;
+                let minDist = Infinity;
+                pool.forEach(t => {
+                    const d = Math.hypot(t.x - this.x, t.y - this.y);
+                    if (d < minDist) { minDist = d; nearest = t; }
+                });
+                this.nearestEnemy = nearest;
+
+                if (nearest) {
+                    const dx = nearest.x - this.x;
+                    const dy = nearest.y - this.y;
+                    const dist = Math.hypot(dx, dy);
+                    this.targetAngle = Math.atan2(dy, dx);
+
+                    const buffer = 20;
+                    const desiredRange = this.getMinAttackDistance(this.targetAngle) - buffer;
+
+                    if (dist > desiredRange) {
+                        this.destination = { x: nearest.x, y: nearest.y };
+                    } else {
+                        this.destination = null; // 사거리 내에 있으므로 이동 중지
+                    }
+                } else if (this.attackMovePos) {
+                    const dist = Math.hypot(this.attackMovePos.x - this.x, this.attackMovePos.y - this.y);
+                    if (dist > 5) {
+                        this.destination = this.attackMovePos;
+                    } else {
+                        this.clearAttackMove(); // 목표 지점 도착
+                    }
+                } else {
+                    this.clearAttackMove(); // 공격할 대상도, 이동할 지점도 없음
                 }
-                if (this.attackMove && this.attackTargets.length === 0 && !this.attackMovePos) {
-                    this.clearAttackMove();
+            }
+            // 1-C. 자동 공격 (Auto-Aggro)
+            else if (!this.destination && !this.ignoreEnemies) {
+                const nearest = this.findNearestEnemy(enemies);
+                if (nearest) {
+                    this.startAttackMove([nearest]);
+                } else {
+                    this.nearestEnemy = null;
                 }
             }
         }
 
-
-        // 각 플랫폼에 대해 업데이트 (플랫폼 내부에서 네모의 위치를 업데이트합니다)
-        this.platforms.forEach(platform => platform.update());
-
-        const isShooting = this.platforms.some(p =>
-            p instanceof AttackPlatform && p.onHand && p.mode2 === 'attackOn');
-
-        if (this.hp <= 0 && !this.dead) {
-            this.destroyed(); // HP가 0이 되면 네모가 죽는다
-        }
-        if (this.unitType === "army") {
-            if (!movedByFormation && !isShooting && this.moveVector && (this.moveVector.x || this.moveVector.y)) {
-                this.x += this.moveVector.x;
-                this.y += this.moveVector.y;
-                const mag = Math.hypot(this.moveVector.x, this.moveVector.y);
-                if (mag > 0.01) {
-                    this.targetAngle = Math.atan2(this.moveVector.y, this.moveVector.x);
-                }
-            } 
-            if (this.destination) {
-                const dist = Math.hypot(this.destination.x - this.x, this.destination.y - this.y);
-                if (dist < 5) {
-                    this.x = this.destination.x;
-                    this.y = this.destination.y;
-                    this.destination = null;
-                    this.ignoreEnemies = false;
-                    const moveP = this.platforms.find(p => p instanceof MovePlatform);
-                    if (moveP) {
-                        moveP.destination = null;
-                        moveP.mode = "return";
-                    }
-                    if (this.attackMove && this.attackTargets.length === 0 && !this.attackMovePos) {
-                        this.clearAttackMove();
-                    }
-                }
-            }
-        }
-
+        // 2. 이동 실행
+        const isShooting = this.platforms.some(p => p instanceof AttackPlatform && p.mode2 === 'attackOn');
         const turned = this.rotateTowards(this.targetAngle);
 
-        // 통합된 이동 로직
         if (this.destination && turned && !isShooting) {
             const dx = this.destination.x - this.x;
             const dy = this.destination.y - this.y;
             const dist = Math.hypot(dx, dy);
             const step = Math.min(this.maxSpeed, dist);
             
-            this.x += Math.cos(this.angle) * step;
-            this.y += Math.sin(this.angle) * step;
+            // 목표 방향으로 이동하도록 수정
+            this.x += (dx / dist) * step;
+            this.y += (dy / dist) * step;
 
-            if (dist <= step) {
+            // 도착 판정
+            if (dist <= this.maxSpeed) {
+                this.x = this.destination.x;
                 this.destination = null;
+                // 스쿼드 이동 중이 아닐 때만 ignoreEnemies 해제
+                if (!this.squad || !this.squad.squadDestination) {
+                    this.ignoreEnemies = false;
+                }
             }
         }
-        
-        // Update isMoving based on whether the unit is moving or not
-        const isArmyMoving = this.unitType === "army" && this.moveVector && (this.moveVector.x || this.moveVector.y);
-        const hasDestination = this.destination !== null;
 
-        this.isMoving = (hasDestination && turned && !isShooting) || isArmyMoving;
+        // 3. 나머지 업데이트 (플랫폼, 사망 처리 등)
+        this.platforms.forEach(platform => platform.update());
+
+        if (this.hp <= 0 && !this.dead) {
+            this.destroyed();
+        }
+
+        this.isMoving = this.destination !== null && turned && !isShooting;
 
         if (this.shieldFlash > 0) this.shieldFlash--;
 
-        const moved = Math.hypot(this.x - prevX, this.y - prevY) > 0.1;
+        const moved = this.isMoving;
         const activePlatform = this.platforms.some(p => p.mode !== 'idle' || p.mode2 !== 'idle');
         if (moved || activePlatform) {
             this.activity = Math.min(1, this.activity + 0.05);

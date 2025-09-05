@@ -571,9 +571,7 @@ canvas.addEventListener("mouseup", (e) => {
                 moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
             } else {
                 targets.forEach(n => {
-                    n.clearAttackMove();
                     n.setDestination(pos.x, pos.y);
-                    n.ignoreEnemies = true;
                 });
                 moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
             }
