@@ -461,75 +461,63 @@ canvas.addEventListener("mouseup", (e) => {
 
         // 드래그 거리가 거의 없으면 클릭으로 간주
         if (dragWidth < 5 && dragHeight < 5) {
-            if (selectionStartedWithSelection) {
-                // Shift 키를 누르지 않고, 공격 명령도 아닌 상태에서 빈 공간을 클릭하면 모든 선택 해제
-                if (!attackKey && !e.shiftKey && !enemyNemoAt(pos) && !enemySquadAt(pos) && !nemoAt(pos) && !workerAt(pos) && !squadAt(pos)) {
-                    selectedNemos.forEach(n => (n.selected = false));
-                    selectedWorkers.forEach(w => (w.selected = false));
-                    selectedSquads.forEach(s => (s.selected = false));
-                    selectedNemos = [];
-                    selectedWorkers = [];
-                    selectedSquads = [];
-                    return; // 선택 해제 후 추가 동작 방지
-                }
-            } else {
-            let clickedNemo = null;
-            for (const nemo of nemos) {
-                if (
-                    pos.x >= nemo.x - nemo.size / 2 &&
-                    pos.x <= nemo.x + nemo.size / 2 &&
-                    pos.y >= nemo.y - nemo.size / 2 &&
-                    pos.y <= nemo.y + nemo.size / 2
-                ) {
-                    clickedNemo = nemo;
-                    break;
-                }
-            }
-            let clickedWorker = null;
-            for (const w of workers) {
-                if (
-                    pos.x >= w.x - w.size / 2 &&
-                    pos.x <= w.x + w.size / 2 &&
-                    pos.y >= w.y - w.size / 2 &&
-                    pos.y <= w.y + w.size / 2
-                ) {
-                    clickedWorker = w;
-                    break;
-                }
-            }
+            const clickedNemo = nemoAt(pos);
+            const clickedWorker = workerAt(pos);
+            // 네모나 워커가 클릭되지 않았을 때만 스쿼드를 확인합니다.
+            const clickedSquad = (!clickedNemo && !clickedWorker) ? squadAt(pos) : null;
 
-            // Shift 키를 누르지 않았을 때만 기존 선택을 해제합니다.
-            if (!e.shiftKey) {
+            const clickedSomething = clickedNemo || clickedWorker || clickedSquad;
+
+            // 1. 선택 해제 로직: Shift를 누르지 않고 빈 공간을 클릭한 경우
+            if (!e.shiftKey && !clickedSomething && !enemyNemoAt(pos) && !enemySquadAt(pos)) {
                 selectedNemos.forEach(n => (n.selected = false));
                 selectedWorkers.forEach(w => (w.selected = false));
                 selectedSquads.forEach(s => (s.selected = false));
                 selectedNemos = [];
                 selectedWorkers = [];
                 selectedSquads = [];
+                selectionRect = null;
+                return;
             }
 
-            if (clickedNemo) {
-                clickedNemo.selected = true;
-                selectedNemos.push(clickedNemo);
-            } else if (clickedWorker) {
-                clickedWorker.selected = true;
-                selectedWorkers.push(clickedWorker);
-            } else {
-                let clickedSquad = null;
-                for (const squad of squadManager.squads) {
-                    const b = squad.bounds;
-                    if (pos.x >= b.x && pos.x <= b.x + b.w && pos.y >= b.y && pos.y <= b.y + b.h) {
-                        clickedSquad = squad;
-                        break;
+            // 2. 선택 로직: 무언가 클릭된 경우
+            if (clickedSomething) {
+                // Shift를 누르지 않았다면, 기존 선택을 모두 해제합니다.
+                if (!e.shiftKey) {
+                    selectedNemos.forEach(n => (n.selected = false));
+                    selectedWorkers.forEach(w => (w.selected = false));
+                    selectedSquads.forEach(s => (s.selected = false));
+                    selectedNemos = [];
+                    selectedWorkers = [];
+                    selectedSquads = [];
+                }
+
+                // 클릭된 개체를 선택 목록에 추가/제거(토글)합니다.
+                if (clickedNemo) {
+                    const index = selectedNemos.indexOf(clickedNemo);
+                    if (index > -1 && e.shiftKey) {
+                        clickedNemo.selected = false;
+                        selectedNemos.splice(index, 1);
+                    } else if (index === -1) {
+                        clickedNemo.selected = true;
+                        selectedNemos.push(clickedNemo);
+                    }
+                } else if (clickedWorker) {
+                    // (워커에 대한 토글 로직도 필요하다면 여기에 추가)
+                    clickedWorker.selected = true;
+                    if (!selectedWorkers.includes(clickedWorker)) selectedWorkers.push(clickedWorker);
+                } else if (clickedSquad) {
+                    const index = selectedSquads.indexOf(clickedSquad);
+                    if (index > -1 && e.shiftKey) {
+                        clickedSquad.selected = false;
+                        selectedSquads.splice(index, 1);
+                    } else if (index === -1) {
+                        clickedSquad.selected = true;
+                        selectedSquads.push(clickedSquad);
                     }
                 }
-                if (clickedSquad) {
-                    clickedSquad.selected = true;
-                    selectedSquads.push(clickedSquad);
-                }
             }
-            }
-        } else {
+        } else { // 드래그 선택 로직
             const minX = Math.min(selectionRect.x1, selectionRect.x2);
             const maxX = Math.max(selectionRect.x1, selectionRect.x2);
             const minY = Math.min(selectionRect.y1, selectionRect.y2);
