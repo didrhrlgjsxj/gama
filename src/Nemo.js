@@ -106,7 +106,7 @@ class Nemo {
         this.shieldFlash = 0; // shield flash timer when shield is depleted
 
         // 적을 감지하는 범위
-        this.recognitionRange = 400;
+        this.recognitionRange = 1000;
 
         // unit 타입일 경우 회전 및 이동을 직접 제어하기 위한 프로퍼티
         this.targetAngle = 0;

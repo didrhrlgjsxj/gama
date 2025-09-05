@@ -35,6 +35,9 @@ class Squad {
         this.primaryCombatTarget = null; // 주 경계 대상
         this.secondaryCombatTargets = []; // 보조 경계 대상 (나를 주 경계 대상으로 삼는 다른 스쿼드들)
         this.isHeadOnBattle = false; // 정면 전투 상태
+        this.vigilanceBattleTarget = null; // 경계 전투 상태 대상
+        this.responseBattleTarget = null; // 대응 전투 상태 대상
+        this.isResponseAttacker = false; // 대응 전투 상태에서 공격측인지 여부
 
         this.targetDirection = 0; // 목표 이동 방향 (라디안)
         this.lastCenter = { x: 0, y: 0 };
@@ -324,6 +327,28 @@ class Squad {
             ctx.restore();
         }
 
+        // 경계 전투 상태 (Vigilance Battle) 화살표 그리기
+        if (this.vigilanceBattleTarget) {
+            const myCenter = { x: this.bounds.x + this.bounds.w / 2, y: this.bounds.y + this.bounds.h / 2 };
+            const targetCenter = { x: this.vigilanceBattleTarget.bounds.x + this.vigilanceBattleTarget.bounds.w / 2, y: this.vigilanceBattleTarget.bounds.y + this.vigilanceBattleTarget.bounds.h / 2 };
+            const midPoint = { x: (myCenter.x + targetCenter.x) / 2, y: (myCenter.y + targetCenter.y) / 2 };
+            const angle = Math.atan2(targetCenter.y - myCenter.y, targetCenter.x - myCenter.x);
+
+            ctx.save();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 4;
+            ctx.fillStyle = 'rgba(255, 165, 0, 0.6)'; // Orange color for vigilance
+
+            // 양쪽 모두에게서 중간 지점으로 향하는 선
+            ctx.beginPath();
+            ctx.moveTo(myCenter.x, myCenter.y);
+            ctx.lineTo(midPoint.x, midPoint.y);
+            ctx.moveTo(targetCenter.x, targetCenter.y);
+            ctx.lineTo(midPoint.x, midPoint.y);
+            ctx.stroke();
+            ctx.restore();
+        }
+
         // 보조 경계 대상 (방어적 교전)에 대한 화살표 그리기
         this.secondaryCombatTargets.forEach(secondaryTarget => {
             const myCenter = { x: this.bounds.x + this.bounds.w / 2, y: this.bounds.y + this.bounds.h / 2 };
@@ -367,6 +392,51 @@ class Squad {
 
             ctx.restore();
         });
+
+        // 대응 전투 상태 (Response Battle) 화살표 그리기
+        if (this.responseBattleTarget) {
+            const myCenter = { x: this.bounds.x + this.bounds.w / 2, y: this.bounds.y + this.bounds.h / 2 };
+            const targetCenter = { x: this.responseBattleTarget.bounds.x + this.responseBattleTarget.bounds.w / 2, y: this.responseBattleTarget.bounds.y + this.responseBattleTarget.bounds.h / 2 };
+            
+            const midPoint = { 
+                x: myCenter.x * 0.5 + targetCenter.x * 0.5, 
+                y: myCenter.y * 0.5 + targetCenter.y * 0.5 
+            };
+
+            const angleToTarget = Math.atan2(targetCenter.y - myCenter.y, targetCenter.x - myCenter.x);
+            const angleToMe = angleToTarget + Math.PI;
+            const arrowLength = 40;
+
+            ctx.save();
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = 6;
+
+            // 공격자(Attacker)의 화살표 (뾰족함)
+            const attacker = this.isResponseAttacker ? this : this.responseBattleTarget;
+            const defender = this.isResponseAttacker ? this.responseBattleTarget : this;
+            const attackerCenter = { x: attacker.bounds.x + attacker.bounds.w / 2, y: attacker.bounds.y + attacker.bounds.h / 2 };
+            const defenderCenter = { x: defender.bounds.x + defender.bounds.w / 2, y: defender.bounds.y + defender.bounds.h / 2 };
+            const angleFromAttacker = Math.atan2(defenderCenter.y - attackerCenter.y, defenderCenter.x - attackerCenter.x);
+
+            ctx.fillStyle = attacker.team === 'red' ? 'rgba(255, 100, 100, 0.7)' : 'rgba(100, 100, 255, 0.7)';
+            ctx.beginPath();
+            ctx.moveTo(attackerCenter.x, attackerCenter.y);
+            ctx.lineTo(midPoint.x, midPoint.y);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(midPoint.x, midPoint.y);
+            ctx.lineTo(midPoint.x - arrowLength * Math.cos(angleFromAttacker - Math.PI / 6), midPoint.y - arrowLength * Math.sin(angleFromAttacker - Math.PI / 6));
+            ctx.lineTo(midPoint.x - arrowLength * Math.cos(angleFromAttacker + Math.PI / 6), midPoint.y - arrowLength * Math.sin(angleFromAttacker + Math.PI / 6));
+            ctx.closePath();
+            ctx.fill();
+
+            // 방어자(Defender)의 화살표 (둥글게)
+            ctx.fillStyle = defender.team === 'red' ? 'rgba(255, 100, 100, 0.7)' : 'rgba(100, 100, 255, 0.7)';
+            ctx.beginPath();
+            ctx.arc(midPoint.x, midPoint.y, 15, angleFromAttacker - Math.PI / 2, angleFromAttacker + Math.PI / 2);
+            ctx.fill();
+            ctx.restore();
+        }
 
         // 주/보조 경계 방향 그리기
         if (this.nemos.length > 0) {
@@ -530,6 +600,9 @@ class SquadManager {
         this.squads.forEach(squad => {
             squad.isHeadOnBattle = false;
             squad.secondaryCombatTargets = [];
+            squad.vigilanceBattleTarget = null;
+            squad.responseBattleTarget = null;
+            squad.isResponseAttacker = false;
 
             if (squad.primaryCombatTarget && squad.primaryCombatTarget.primaryCombatTarget === squad) {
                 squad.isHeadOnBattle = true;
@@ -537,11 +610,32 @@ class SquadManager {
 
             // 나를 주 경계 대상으로 삼는 다른 스쿼드들을 찾는다.
             this.squads.forEach(otherSquad => {
-                if (otherSquad.team !== squad.team && otherSquad.primaryCombatTarget === squad && !squad.isHeadOnBattle) {
-                    squad.secondaryCombatTargets.push(otherSquad);
+                if (otherSquad.team !== squad.team) {
+                    const isOtherPrimaryTargetingMe = otherSquad.primaryCombatTarget === squad;
+                    const isMyPrimaryTargetingOther = squad.primaryCombatTarget === otherSquad;
+
+                    if (isOtherPrimaryTargetingMe && !isMyPrimaryTargetingOther) {
+                        // Case: 다른 스쿼드가 나를 주 경계 대상으로 삼았지만, 나는 그렇지 않음.
+                        // 이것이 기존의 '보조 경계 대상' (방어적 교전) 입니다.
+                        // 이 상태는 이제 '대응 전투 상태'로 처리됩니다.
+                        squad.responseBattleTarget = otherSquad;
+                        squad.isResponseAttacker = false; // 나는 방어자
+                        otherSquad.responseBattleTarget = squad;
+                        otherSquad.isResponseAttacker = true; // 상대는 공격자
+                    }
                 }
             });
         });
+
+        // 경계 전투 상태 확인 (상호 보조 경계)
+        // 이 로직은 보조 경계 대상을 별도로 지정하는 기능이 추가된 후에 구현해야 합니다.
+        // 현재는 primaryCombatTarget만 있으므로, 이 부분은 개념적으로만 남겨둡니다.
+        // 예: if (squad.secondaryTarget === otherSquad && otherSquad.secondaryTarget === squad) {
+        //         squad.vigilanceBattleTarget = otherSquad;
+        //         otherSquad.vigilanceBattleTarget = squad;
+        //     }
+        // 현재 로직에서는 '대응 전투 상태'가 기존 '보조 경계 대상'의 역할을 대신합니다.
+        // '경계 전투' 시각화 코드는 추가되었지만, 트리거 조건이 없어 아직 표시되지 않습니다.
     }
 
     draw(ctx) {
