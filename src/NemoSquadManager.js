@@ -274,6 +274,19 @@ class Squad {
         return this.nemos.length * 45;
     }
 
+    calculateRecognitionRange() {
+        if (this.nemos.length === 0) return 0;
+
+        const ranges = this.nemos.map(n => n.recognitionRange);
+        const sum = ranges.reduce((acc, range) => acc + range, 0);
+        const avgRange = sum / this.nemos.length;
+        const maxRange = Math.max(...ranges);
+
+        // (평균 감지 거리 + 최대 감지 거리) / 2
+        const finalRange = (avgRange + maxRange) / 2;
+        return finalRange;
+    }
+
     // Draw translucent rectangle covering all nemos in the squad
     draw(ctx) {
 
@@ -569,13 +582,13 @@ class SquadManager {
 
     // Build squads from given nemos array
     updateSquads(nemos) {
-        const recognitionRange = 800; // 스쿼드 인식 범위
         this.squads.forEach(s => s.update());
 
         // 스쿼드별 주 경계 대상 및 정면 전투 상태 설정
         this.squads.forEach(squad => {
             let nearestEnemySquad = null;
-            let minDistance = recognitionRange;
+            const recognitionRange = squad.calculateRecognitionRange(); // 스쿼드의 고유 인식 범위 계산
+            let minDistance = recognitionRange; 
 
             this.squads.forEach(otherSquad => {
                 if (squad.team !== otherSquad.team) {

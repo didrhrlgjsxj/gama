@@ -104,6 +104,11 @@ class Nemo {
         this.attackTargets = [];
         this.attackMovePos = null;
         this.shieldFlash = 0; // shield flash timer when shield is depleted
+        this.shootingAccuracy = 1.0; // 네모 사격 정확도
+
+        // 계산된 최종 사거리 값
+        this.calculatedMaxRange = 0;
+        this.calculatedEffectiveRange = 0;
 
         // 적을 감지하는 범위
         this.recognitionRange = 1000;
@@ -155,13 +160,7 @@ class Nemo {
             }
         });
 
-        // 가장 긴 사정거리 저장
-        this.maxAttackRange = 0;
-        this.platforms.forEach(p => {
-            if (p instanceof AttackPlatform && p.attackRange > this.maxAttackRange) {
-                this.maxAttackRange = p.attackRange;
-            }
-        });
+        this.recalculateStats(); // 초기 스탯 계산
 
         // unit 타입의 이동 명령 관련 메서드
         this.setMoveCommand = (angle, reverse = false) => {
@@ -245,6 +244,22 @@ class Nemo {
         //MainGrid.addEntity(this); 
     }
 
+    recalculateStats() {
+        let maxRange = 0;
+        let effectiveRange = 0;
+
+        this.platforms.forEach(p => {
+            if (p instanceof AttackPlatform) {
+                const currentMax = p.baseMaxRange * this.shootingAccuracy;
+                const currentEffective = p.baseEffectiveRange * this.shootingAccuracy;
+                if (currentMax > maxRange) maxRange = currentMax;
+                if (currentEffective > effectiveRange) effectiveRange = currentEffective;
+            }
+        });
+        this.calculatedMaxRange = maxRange;
+        this.calculatedEffectiveRange = effectiveRange;
+    }
+
     // 적을 찾는 함수
     findNearestEnemy(enemies) {
         let nearestEnemy = null;
@@ -276,7 +291,7 @@ class Nemo {
                 const offY = muzzle.y - this.y;
                 const parallel = offX * Math.cos(angleToEnemy) + offY * Math.sin(angleToEnemy);
                 const perpSq = offX * offX + offY * offY - parallel * parallel;
-                const reachSq = p.attackRange * p.attackRange - perpSq;
+                const reachSq = this.calculatedMaxRange * this.calculatedMaxRange - perpSq;
                 if (reachSq >= 0) {
                     const candidate = parallel + Math.sqrt(reachSq);
                     if (candidate > maxDist) maxDist = candidate;
@@ -296,7 +311,7 @@ class Nemo {
                 const offY = muzzle.y - this.y;
                 const parallel = offX * Math.cos(angleToEnemy) + offY * Math.sin(angleToEnemy);
                 const perpSq = offX * offX + offY * offY - parallel * parallel;
-                const reachSq = p.attackRange * p.attackRange - perpSq;
+                const reachSq = this.calculatedEffectiveRange * this.calculatedEffectiveRange - perpSq; // 유효사거리 기준
                 if (reachSq >= 0) {
                     const candidate = parallel + Math.sqrt(reachSq);
                     if (candidate < minDist) minDist = candidate;

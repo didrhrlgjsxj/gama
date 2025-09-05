@@ -184,9 +184,11 @@ class AttackPlatform extends Platform {
         this.enemyAngle = 0; // 적의 방향 저장
 
         // 공격 관련 설정
-        this.attackSpeed = 1;    // 초당 발사 수
-        this.attackRange = 280;  // 사정거리(고정값)
-        this.attackPower = 4;    // 공격력
+        this.attackSpeed = 1; // 초당 발사 수
+        this.attackPower = 4; // 공격력
+        this.baseMaxRange = 1000; // 최대 사거리
+        this.baseEffectiveRange = 500; // 유효 사거리
+        this.accuracyWeight = 0.5; // 명중률 보간 가중치 (0~1, 높을수록 근거리에서 강해짐)
         this.lastShot = 0;
         this.hitSize = 6;
 
@@ -298,12 +300,23 @@ class AttackPlatform extends Platform {
             const now = Date.now();
             const dx = this.parent.nearestEnemy.x - this.x;
             const dy = this.parent.nearestEnemy.y - this.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist <= this.attackRange && (now - this.lastShot) >= 1000 / this.attackSpeed) {
+            const distanceToTarget = Math.hypot(dx, dy);
+
+            if (distanceToTarget <= this.parent.calculatedMaxRange && (now - this.lastShot) >= 1000 / this.attackSpeed) {
                 const target = this.parent.nearestEnemy;
                 if (target.team !== this.parent.team && target.takeDamage) {
-                    target.takeDamage(this.attackPower);
+                    // 거리에 따른 데미지 보간 계산
+                    let damageMultiplier = 1.0;
+                    if (distanceToTarget > this.parent.calculatedEffectiveRange) {
+                        // 유효 사거리를 벗어나면 데미지가 감소
+                        const rangeRatio = (distanceToTarget - this.parent.calculatedEffectiveRange) / (this.parent.calculatedMaxRange - this.parent.calculatedEffectiveRange);
+                        const clampedRatio = Math.max(0, Math.min(1, rangeRatio));
+                        damageMultiplier = 1 - (clampedRatio * this.accuracyWeight);
+                    }
+                    const finalDamage = this.attackPower * damageMultiplier;
+                    target.takeDamage(finalDamage);
                 }
+
                 const hitAngle = Math.atan2(target.y - this.y, target.x - this.x);
                 const perp = hitAngle + Math.PI / 2;
                 const offset = target.size / 2;

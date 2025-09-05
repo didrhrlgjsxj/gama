@@ -424,12 +424,14 @@ canvas.addEventListener("mouseup", (e) => {
         // 드래그 거리가 거의 없으면 클릭으로 간주
         if (dragWidth < 5 && dragHeight < 5) {
             if (selectionStartedWithSelection) {
-                if (!attackKey) {
+                // Shift 키를 누르지 않고 빈 공간을 클릭하면 모든 선택 해제
+                if (!attackKey && !e.shiftKey) {
                     selectedNemos.forEach(n => (n.selected = false));
                     selectedSquads.forEach(s => (s.selected = false));
                     selectedNemos = [];
                     selectedSquads = [];
                 } else {
+                    // 공격 이동 또는 Shift 클릭 시에는 선택을 유지
                     const targets = getAllSelectedNemos();
                     targets.forEach(n => {
                         n.clearAttackMove();
@@ -464,12 +466,15 @@ canvas.addEventListener("mouseup", (e) => {
                 }
             }
 
-            selectedNemos.forEach(n => (n.selected = false));
-            selectedWorkers.forEach(w => (w.selected = false));
-            selectedSquads.forEach(s => (s.selected = false));
-            selectedNemos = [];
-            selectedWorkers = [];
-            selectedSquads = [];
+            // Shift 키를 누르지 않았을 때만 기존 선택을 해제합니다.
+            if (!e.shiftKey) {
+                selectedNemos.forEach(n => (n.selected = false));
+                selectedWorkers.forEach(w => (w.selected = false));
+                selectedSquads.forEach(s => (s.selected = false));
+                selectedNemos = [];
+                selectedWorkers = [];
+                selectedSquads = [];
+            }
 
             if (clickedNemo) {
                 clickedNemo.selected = true;
@@ -497,12 +502,15 @@ canvas.addEventListener("mouseup", (e) => {
             const maxX = Math.max(selectionRect.x1, selectionRect.x2);
             const minY = Math.min(selectionRect.y1, selectionRect.y2);
             const maxY = Math.max(selectionRect.y1, selectionRect.y2);
-            selectedNemos.forEach(n => (n.selected = false));
-            selectedWorkers.forEach(w => (w.selected = false));
-            selectedSquads.forEach(s => (s.selected = false));
-            selectedNemos = [];
-            selectedWorkers = [];
-            selectedSquads = [];
+            // Shift 키를 누르지 않았을 때만 기존 선택을 해제합니다.
+            if (!e.shiftKey) {
+                selectedNemos.forEach(n => (n.selected = false));
+                selectedWorkers.forEach(w => (w.selected = false));
+                selectedSquads.forEach(s => (s.selected = false));
+                selectedNemos = [];
+                selectedWorkers = [];
+                selectedSquads = [];
+            }
             nemos.forEach(nemo => {
                 if (nemo.x >= minX && nemo.x <= maxX && nemo.y >= minY && nemo.y <= maxY) {
                     nemo.selected = true;
