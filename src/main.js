@@ -268,6 +268,44 @@ function issueAttackMove(targets, pos) {
     if (pos) moveIndicators.push(new MoveIndicator(pos.x, pos.y));
 }
 
+function nemoAt(pos) {
+    for (const nemo of nemos) {
+        if (
+            pos.x >= nemo.x - nemo.size / 2 &&
+            pos.x <= nemo.x + nemo.size / 2 &&
+            pos.y >= nemo.y - nemo.size / 2 &&
+            pos.y <= nemo.y + nemo.size / 2
+        ) {
+            return nemo;
+        }
+    }
+    return null;
+}
+
+function workerAt(pos) {
+    for (const w of workers) {
+        if (
+            pos.x >= w.x - w.size / 2 &&
+            pos.x <= w.x + w.size / 2 &&
+            pos.y >= w.y - w.size / 2 &&
+            pos.y <= w.y + w.size / 2
+        ) {
+            return w;
+        }
+    }
+    return null;
+}
+
+function squadAt(pos) {
+    for (const squad of squadManager.squads) {
+        const b = squad.bounds;
+        if (pos.x >= b.x && pos.x <= b.x + b.w && pos.y >= b.y && pos.y <= b.y + b.h) {
+            return squad;
+        }
+    }
+    return null;
+}
+
 function createGhostSquad(squadType, team) {
     ghostWorker = null;
     ghostBuilding = null;
@@ -424,21 +462,15 @@ canvas.addEventListener("mouseup", (e) => {
         // 드래그 거리가 거의 없으면 클릭으로 간주
         if (dragWidth < 5 && dragHeight < 5) {
             if (selectionStartedWithSelection) {
-                // Shift 키를 누르지 않고 빈 공간을 클릭하면 모든 선택 해제
-                if (!attackKey && !e.shiftKey) {
+                // Shift 키를 누르지 않고, 공격 명령도 아닌 상태에서 빈 공간을 클릭하면 모든 선택 해제
+                if (!attackKey && !e.shiftKey && !enemyNemoAt(pos) && !enemySquadAt(pos) && !nemoAt(pos) && !workerAt(pos) && !squadAt(pos)) {
                     selectedNemos.forEach(n => (n.selected = false));
+                    selectedWorkers.forEach(w => (w.selected = false));
                     selectedSquads.forEach(s => (s.selected = false));
                     selectedNemos = [];
+                    selectedWorkers = [];
                     selectedSquads = [];
-                } else {
-                    // 공격 이동 또는 Shift 클릭 시에는 선택을 유지
-                    const targets = getAllSelectedNemos();
-                    targets.forEach(n => {
-                        n.clearAttackMove();
-                        n.setDestination(pos.x, pos.y);
-                        n.ignoreEnemies = true;
-                    });
-                    moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
+                    return; // 선택 해제 후 추가 동작 방지
                 }
             } else {
             let clickedNemo = null;
@@ -511,18 +543,14 @@ canvas.addEventListener("mouseup", (e) => {
                 selectedWorkers = [];
                 selectedSquads = [];
             }
-            nemos.forEach(nemo => {
-                if (nemo.x >= minX && nemo.x <= maxX && nemo.y >= minY && nemo.y <= maxY) {
-                    nemo.selected = true;
-                    selectedNemos.push(nemo);
-                }
-            });
             workers.forEach(w => {
                 if (w.x >= minX && w.x <= maxX && w.y >= minY && w.y <= maxY) {
                     w.selected = true;
                     selectedWorkers.push(w);
                 }
             });
+            // 스쿼드를 먼저 선택하고, 스쿼드에 포함되지 않은 네모를 나중에 선택합니다.
+            const selectedInSquads = new Set();
             squadManager.squads.forEach(squad => {
                 const b = squad.bounds;
                 if (b.x >= minX && b.x + b.w <= maxX && b.y >= minY && b.y + b.h <= maxY) {
@@ -530,7 +558,14 @@ canvas.addEventListener("mouseup", (e) => {
                     if (!hasSelected) {
                         squad.selected = true;
                         selectedSquads.push(squad);
+                        squad.nemos.forEach(n => selectedInSquads.add(n.id));
                     }
+                }
+            });
+            nemos.forEach(nemo => {
+                if (!selectedInSquads.has(nemo.id) && nemo.x >= minX && nemo.x <= maxX && nemo.y >= minY && nemo.y <= maxY) {
+                    nemo.selected = true;
+                    selectedNemos.push(nemo);
                 }
             });
         }
