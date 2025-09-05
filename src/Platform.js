@@ -122,20 +122,6 @@ class MovePlatform extends Platform {
             this.y = this.parent.y + Math.sin(angle) * this.maxDistance;
         }
 
-        // 네모 이동: currentDistance가 기본거리보다 클 경우
-        // if (this.currentDistance > this.baseDistance && this.parent.destination && this.destination) { // 네모 이동
-        //     const moveMagnitude = (this.currentDistance - this.baseDistance) * this.parent.maxSpeed / 50;
-        //     const pullAngle = Math.atan2(this.y - this.parent.y, this.x - this.parent.x);
-        //     this.parent.moveVector = {
-        //         x: Math.cos(pullAngle) * moveMagnitude,
-        //         y: Math.sin(pullAngle) * moveMagnitude
-        //     };
-        //     this.moveMagnitude = moveMagnitude; // moveMagnitude를 저장 (선 두께 결정에 사용)
-        // } else {
-        //     this.parent.moveVector = { x: 0, y: 0 };
-        //     this.moveMagnitude = 0;
-        // }
-        
     }
 
     draw(ctx) {
@@ -221,6 +207,15 @@ class AttackPlatform extends Platform {
         };
     }
 
+    // On-hand 무기의 위치를 부모 기준으로 계산하여 업데이트합니다.
+    _updateOnHandPosition() {
+        this.angle = this.parent.angle;
+        this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
+            + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
+        this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
+            + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
+    }
+
     keyInputAngle(newAngle) {
         if (!this.parent.nearestEnemy) {
             this.angle = newAngle;
@@ -230,81 +225,51 @@ class AttackPlatform extends Platform {
     }
 
     update() {
-        if (this.slotAngle === null) {
-            // 기존 동작 (단일 플랫폼)
-            super.update();
+        let targetAngle;
+        const enemy = this.parent.nearestEnemy;
 
-            if (this.parent.unitType === "unit") {
-                this.angle = this.parent.angle;
-                this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
-                    + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
-                this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
-                    + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
-                if (this.parent.nearestEnemy) {
-                    const dx = this.parent.nearestEnemy.x - this.parent.x;
-                    const dy = this.parent.nearestEnemy.y - this.parent.y;
-                    const enemyAngle = Math.atan2(dy, dx);
-                    let diff = enemyAngle - this.angle;
-                    this.mode2 = Math.abs(diff) < Math.PI / 30 ? "attackOn" : "idle";
-                } else {
-                    this.mode2 = "idle";
-                }
-            }
-
-            if (this.parent.nearestEnemy) {
-                const dx = this.parent.nearestEnemy.x - this.parent.x;
-                const dy = this.parent.nearestEnemy.y - this.parent.y;
-                const targetAngle = Math.atan2(dy, dx);
-                let angleDiff = targetAngle - this.angle;
-                this.mode2 = Math.abs(angleDiff) < Math.PI / 30 ? "attackOn" : "idle";
-
-                this.angle += angleDiff * 0.1;
-                this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
-                    + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
-                this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
-                    + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
-            } else {
-                this.angle = this.parent.angle;
-                this.x = this.parent.x + Math.cos(this.angle) * this.baseDistance
-                    + Math.cos(this.angle + Math.PI / 2) * this.rightOffset;
-                this.y = this.parent.y + Math.sin(this.angle) * this.baseDistance
-                    + Math.sin(this.angle + Math.PI / 2) * this.rightOffset;
-                this.mode2 = "idle";
-            }
-        } else {
-            // 고정 위치 플랫폼(army 다수)
+        // 1. 위치 및 목표 각도 결정
+        if (this.onHand) { // 손에 든 무기 (unit)
+            this._updateOnHandPosition();
+            targetAngle = enemy ? Math.atan2(enemy.y - this.parent.y, enemy.x - this.parent.x) : this.parent.angle;
+        } else { // 고정된 무기 (army)
             const baseAngle = this.parent.angle + this.slotAngle;
             this.x = this.parent.x + Math.cos(baseAngle) * this.baseDistance;
             this.y = this.parent.y + Math.sin(baseAngle) * this.baseDistance;
+            targetAngle = enemy ? Math.atan2(enemy.y - this.y, enemy.x - this.x) : this.parent.angle;
+        }
 
-            let targetAngle;
-            if (this.parent.nearestEnemy) {
-                const dx = this.parent.nearestEnemy.x - this.x;
-                const dy = this.parent.nearestEnemy.y - this.y;
-                targetAngle = Math.atan2(dy, dx);
-            } else {
-                // 적이 없을 때는 네모가 바라보는 방향을 그대로 따른다
-                // 기존에는 플랫폼 위치 기준으로 총구가 바깥을 향했으나, 항상
-                // 정면을 바라보도록 수정
-                targetAngle = this.parent.angle;
-            }
+        // 2. 각도 보간 및 조준 상태(mode2) 업데이트
+        let angleDiff = targetAngle - this.angle;
+        // 각도 차이를 -PI ~ PI 범위로 정규화하여 최단 경로로 회전
+        angleDiff = ((angleDiff + Math.PI) % (2 * Math.PI)) - Math.PI;
 
-            let angleDiff = targetAngle - this.angle;
-            angleDiff = ((angleDiff + Math.PI) % (2 * Math.PI)) - Math.PI;
-            this.mode2 = this.parent.nearestEnemy && Math.abs(angleDiff) < Math.PI / 30 ? "attackOn" : "idle";
+        const aimTolerance = Math.PI / 30; // 조준 허용 오차 (약 6도)
+        if (enemy && Math.abs(angleDiff) < aimTolerance) {
+            this.mode2 = 'attackOn';
+            this.angle = targetAngle; // 조준 완료 시 각도 고정
+        } else {
+            this.mode2 = 'idle';
+            // 부드러운 회전
             this.angle += angleDiff * 0.1;
         }
 
+        // 3. 공격 및 이펙트 처리
+        this.handleShooting(enemy);
+        this.updateEffects();
+    }
+
+    handleShooting(targetEnemy) {
+
         // 공격 처리: 사정거리 내 적이 있고 조준이 완료되었을 때 즉발 공격
-        if (this.parent.nearestEnemy && this.mode2 === 'attackOn') {
+        if (targetEnemy && this.mode2 === 'attackOn') {
             const now = Date.now();
-            const dx = this.parent.nearestEnemy.x - this.x;
-            const dy = this.parent.nearestEnemy.y - this.y;
+            const dx = targetEnemy.x - this.x;
+            const dy = targetEnemy.y - this.y;
             const distanceToTarget = Math.hypot(dx, dy);
 
             if (distanceToTarget <= this.parent.calculatedMaxRange && (now - this.lastShot) >= 1000 / this.attackSpeed) {
-                const target = this.parent.nearestEnemy;
-                if (target.team !== this.parent.team && target.takeDamage) {
+                if (targetEnemy.team !== this.parent.team && targetEnemy.takeDamage) {
                     // 거리에 따른 데미지 보간 계산
                     let damageMultiplier = 1.0;
                     if (distanceToTarget > this.parent.calculatedEffectiveRange) {
@@ -314,16 +279,16 @@ class AttackPlatform extends Platform {
                         damageMultiplier = 1 - (clampedRatio * this.accuracyWeight);
                     }
                     const finalDamage = this.attackPower * damageMultiplier;
-                    target.takeDamage(finalDamage);
+                    targetEnemy.takeDamage(finalDamage);
                 }
 
-                const hitAngle = Math.atan2(target.y - this.y, target.x - this.x);
+                const hitAngle = Math.atan2(targetEnemy.y - this.y, targetEnemy.x - this.x);
                 const perp = hitAngle + Math.PI / 2;
-                const offset = target.size / 2;
-                const rand = (Math.random() - 0.5) * target.size * 0.8;
-                const hx = target.x - Math.cos(hitAngle) * offset + Math.cos(perp) * rand;
-                const hy = target.y - Math.sin(hitAngle) * offset + Math.sin(perp) * rand;
-                const color = mixWithBlack(target.borderColor || target.fillColor || 'black', 0.5);
+                const offset = targetEnemy.size / 2;
+                const rand = (Math.random() - 0.5) * targetEnemy.size * 0.8;
+                const hx = targetEnemy.x - Math.cos(hitAngle) * offset + Math.cos(perp) * rand;
+                const hy = targetEnemy.y - Math.sin(hitAngle) * offset + Math.sin(perp) * rand;
+                const color = mixWithBlack(targetEnemy.borderColor || targetEnemy.fillColor || 'black', 0.5);
                 this.effects.push(new HitEffect(hx, hy, this.hitSize, hitAngle, color, this.hitEffectDuration));
                 this.lastShot = now;
                 // 발사 시 총구가 뒤로 밀리는 효과
@@ -332,12 +297,9 @@ class AttackPlatform extends Platform {
                 this.effects.push(new MuzzleFlash(this, this.muzzleColor, 10));
             }
         }
+    }
 
-
-        // 타겟이 범위를 벗어났거나 사망한 경우에도 이미 생성된 이펙트는
-        // 자연스럽게 사라지도록 남겨둔다. 단, 신규 효과는 생성되지 않는다.
-
-        // 이펙트 업데이트
+    updateEffects() {
         this.effects = this.effects.filter(e => {
             e.update();
             return !e.isDone();
