@@ -159,7 +159,14 @@ window.addEventListener('keyup', (e) => {
         e.preventDefault();
     }
     if (e.key === 'x' || e.key === 'X') {
-        squadManager.mergeSelectedSquads();
+        const newSquad = squadManager.mergeSelectedSquads();
+        if (newSquad) {
+            // 기존 선택을 모두 해제하고 새로 생성된 스쿼드만 선택합니다.
+            selectedNemos.forEach(n => n.selected = false);
+            selectedSquads.forEach(s => s.selected = false);
+            selectedNemos = [];
+            selectedSquads = [newSquad];
+        }
         e.preventDefault();
     }
 });

@@ -561,7 +561,7 @@ class SquadManager {
 
     mergeSelectedSquads() {
         const selected = this.squads.filter(s => s.selected);
-        if (selected.length < 2) return;
+        if (selected.length < 2) return null;
 
         const newNemos = [];
         const team = selected[0].team;
@@ -578,6 +578,7 @@ class SquadManager {
         newSquad.nemos.forEach(n => n.squad = newSquad);
         newSquad.selected = true;
         this.squads.push(newSquad);
+        return newSquad;
     }
 
     // Build squads from given nemos array
