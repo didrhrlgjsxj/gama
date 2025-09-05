@@ -579,58 +579,46 @@ canvas.addEventListener("mouseup", (e) => {
         const targets = getAllSelectedNemos();
         const team = targets[0] ? targets[0].team : null;
 
-        // 드래그 거리가 거의 없으면(클릭), 유닛들이 현재 포메이션을 유지한 채로 이동하도록 처리합니다.
-        // 드래그를 하면 해당 드래그 영역에 맞춰 유닛들이 배치됩니다.
-        if (dragW < 5 && dragH < 5) { // 클릭으로 간주
+        // 1. 적 유닛/스쿼드 공격
+        if (dragW < 5 && dragH < 5) {
             const enemyN = enemyNemoAt(pos, team);
             const enemyS = enemySquadAt(pos, team);
-
             if (enemyN) {
                 issueAttackMove([enemyN], {x: enemyN.x, y: enemyN.y});
+                moveRect = null;
+                return;
             } else if (enemyS) {
                 issueAttackMove(enemyS.nemos, pos);
-            } else {
-                // 클릭 지점을 중심으로 유닛들의 현재 상대적 위치를 유지하며 목표 지점 설정
-                if (targets.length > 0) {
-                    // 유닛들의 현재 위치의 중심점을 계산합니다.
-                    const currentCenter = targets.reduce((acc, n) => ({ x: acc.x + n.x, y: acc.y + n.y }), { x: 0, y: 0 });
-                    currentCenter.x /= targets.length;
-                    currentCenter.y /= targets.length;
-
-                    // 각 유닛에 대해 새로운 목표 지점을 계산합니다.
-                    targets.forEach(n => {
-                        // 현재 중심점으로부터의 상대적 위치
-                        const relX = n.x - currentCenter.x;
-                        const relY = n.y - currentCenter.y;
-                        // 클릭 지점을 새로운 중심으로 하여 목표 위치 설정
-                        const destX = pos.x + relX;
-                        const destY = pos.y + relY;
-
-                        n.clearAttackMove();
-                        n.setDestination(destX, destY);
-                        n.ignoreEnemies = true;
-                    });
-                    moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
-                }
+                moveRect = null;
+                return;
             }
-        } else {
-            const minX = Math.min(moveRect.x1, moveRect.x2);
-            const minY = Math.min(moveRect.y1, moveRect.y2);
-            const width = dragW;
-            const height = dragH;
-            const count = targets.length;
-            const cols = Math.ceil(Math.sqrt(count));
-            const rows = Math.ceil(count / cols);
-            for (let i = 0; i < count; i++) {
-                const col = i % cols;
-                const row = Math.floor(i / cols);
-                const x = minX + width * (col + 0.5) / cols;
-                const y = minY + height * (row + 0.5) / rows;
-                targets[i].clearAttackMove();
-                targets[i].setDestination(x, y);
-                targets[i].ignoreEnemies = true;
-                moveIndicators.push(new MoveIndicator(x, y, 40, 20, 'yellow'));
+        }
+
+        // 2. 스쿼드 이동 명령
+        if (selectedSquads.length > 0) {
+            if (dragW < 5 && dragH < 5) { // 단순 클릭: 현재 대형 유지하며 이동
+                selectedSquads.forEach(squad => squad.setDestination(pos));
+            } else { // 드래그: 대형 모양과 방향 지정하며 이동
+                const startPos = { x: moveRect.x1, y: moveRect.y1 };
+                const endPos = { x: moveRect.x2, y: moveRect.y2 };
+                selectedSquads.forEach(squad => squad.setFormationShape(startPos, endPos));
             }
+            moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
+        }
+
+        // 3. 개별 유닛 이동 명령 (스쿼드에 속하지 않은 유닛들)
+        const individualNemos = selectedNemos.filter(n => !n.squad || !n.squad.selected);
+        if (individualNemos.length > 0) {
+            // 개별 유닛들은 기존 로직대로 중앙점 기준으로 이동
+            const currentCenter = individualNemos.reduce((acc, n) => ({ x: acc.x + n.x, y: acc.y + n.y }), { x: 0, y: 0 });
+            currentCenter.x /= individualNemos.length;
+            currentCenter.y /= individualNemos.length;
+            individualNemos.forEach(n => {
+                const destX = pos.x + (n.x - currentCenter.x);
+                const destY = pos.y + (n.y - currentCenter.y);
+                n.setDestination(destX, destY);
+            });
+            moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
         }
         moveRect = null;
         e.preventDefault();

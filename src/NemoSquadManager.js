@@ -1,4 +1,5 @@
 // SquadManager.js
+import { NemoSquadFormationManager } from './NemoSquadFormationManager.js';
 
 // This file provides a small manager that automatically groups Nemos
 // by distance. Groups are called "squad".  Nemos within
@@ -26,8 +27,8 @@ class Squad {
         this.team = team;
         this.cellSize = cellSize;
         this.selected = false;
-        this.squadDestination = null; // 스쿼드 전체의 목표 지점
-        this.formationPositions = new Map(); // 네모 ID별 진형 위치
+        this.squadDestination = null; // 스쿼드 전체의 목표 지점        
+        this.formationManager = new NemoSquadFormationManager(this);
 
         this.squadCenter = { x: 0, y: 0 }; // 스쿼드의 가상 중심
         this.squadSpeed = 3; // 스쿼드의 이동 속도
@@ -62,7 +63,7 @@ class Squad {
        this.squadCenter = { x: this.bounds.x + this.bounds.w / 2, y: this.bounds.y + this.bounds.h / 2 };
        this.updateSquadMovement();
        this.updateDirections();
-       this.updateFormation();
+       this.formationManager.update();
    }
 
    setDestination(pos) {
@@ -74,6 +75,17 @@ class Squad {
        // 이동 명령 시, 스쿼드의 현재 중심을 가상 중심으로 설정
        this.squadCenter.x = this.bounds.x + this.bounds.w / 2;
        this.squadCenter.y = this.bounds.y + this.bounds.h / 2;
+   }
+
+   setFormationShape(startPos, endPos) {
+       const dx = endPos.x - startPos.x;
+       const dy = endPos.y - startPos.y;
+       const dist = Math.hypot(dx, dy);
+
+       // 드래그 방향을 새로운 목표 방향으로 설정
+       this.targetDirection = Math.atan2(dy, dx);
+       this.formationManager.formationWidth = Math.max(this.cellSize * 2, dist); // 드래그 길이를 진형 너비로 설정
+       this.setDestination(endPos); // 최종 위치를 목표 지점으로 설정
    }
 
    updateSquadMovement() {
@@ -173,49 +185,6 @@ class Squad {
             dir.currentAngle = lerpAngle(dir.currentAngle, targetAngle, rotationSpeed);
         });
     }
-
-    updateFormation() {
-        if (!this.squadDestination) {
-            if (this.formationPositions.size > 0) this.nemos.forEach(n => n.destination = null);
-            this.formationPositions.clear();
-            return;
-        }
-
-        // 진형의 기준점은 스쿼드의 가상 중심
-        const formationCenter = this.squadCenter;
-        const direction = this.primaryDirection;
-        const spacing = this.cellSize * 1.5; // 유닛 간 간격
-
-        // 리더를 정하고 정렬 (예: ID가 가장 낮은 네모)
-        const sortedNemos = [...this.nemos].sort((a, b) => a.id - b.id);
-
-        let leftCount = 0;
-        let rightCount = 0;
-
-        for (let i = 0; i < sortedNemos.length; i++) {
-            const nemo = sortedNemos[i];
-            // 리더는 진형의 중심에 위치
-            if (i === 0) {
-                this.formationPositions.set(nemo.id, { ...formationCenter });
-                continue;
-            }
-
-            const sideAngle = Math.PI / 6; // V 모양의 각도
-
-            if (i % 2 === 1) { // 왼쪽
-                leftCount++;
-                const angle = direction - sideAngle;
-                const dist = spacing * leftCount;
-                this.formationPositions.set(nemo.id, { x: formationCenter.x + Math.cos(angle) * dist, y: formationCenter.y + Math.sin(angle) * dist });
-            } else { // 오른쪽
-                rightCount++;
-                const angle = direction + sideAngle;
-                const dist = spacing * rightCount;
-                this.formationPositions.set(nemo.id, { x: formationCenter.x + Math.cos(angle) * dist, y: formationCenter.y + Math.sin(angle) * dist });
-            }
-        }
-    }
-
 
     determineSquadSize() {
         let weightedSize = 0;

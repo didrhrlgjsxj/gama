@@ -105,6 +105,7 @@ class Nemo {
         this.attackMovePos = null;
         this.shieldFlash = 0; // shield flash timer when shield is depleted
         this.shootingAccuracy = 1.0; // 네모 사격 정확도
+        this.formationLine = null; // 스쿼드 내에서 몇 번째 라인에 속하는지
 
         // 계산된 최종 사거리 값
         this.calculatedMaxRange = 0;
@@ -435,7 +436,7 @@ class Nemo {
             this.y += this.squad.delta.y;
 
             // 진형 내 자신의 위치로 부드럽게 복귀
-            const formationPos = this.squad.formationPositions.get(this.id);
+            const formationPos = this.squad.formationManager.formationPositions.get(this.id);
             if (formationPos) {
                 const dx = formationPos.x - this.x;
                 const dy = formationPos.y - this.y;
