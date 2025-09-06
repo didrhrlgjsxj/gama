@@ -41,6 +41,8 @@ class Squad {
         this.responseBattleTarget = null; // 대응 전투 상태 대상
         this.isResponseAttacker = false; // 대응 전투 상태에서 공격측인지 여부
         this.isEngaging = false; // 전투 중인지 여부
+        this.attackMoveTargetSquad = null; // 어택땅 목표 스쿼드
+        this.attackMoveDestination = null; // 어택땅 중간 목표 지점
 
         this.targetDirection = 0; // 목표 이동 방향 (라디안)
 
@@ -82,8 +84,30 @@ class Squad {
        }
        if (!this.leader) return; // 스쿼드에 유닛이 없으면 업데이트 중지
 
+       this.updateAttackMoveState();
        this.updateSquadMovementState();
        this.formationManager.update();
+   }
+
+   updateAttackMoveState() {
+       if (!this.attackMoveTargetSquad || this.attackMoveTargetSquad.nemos.length === 0) {
+           this.attackMoveTargetSquad = null;
+           return;
+       }
+
+       const myCenter = { x: this.bounds.x + this.bounds.w / 2, y: this.bounds.y + this.bounds.h / 2 };
+       const targetCenter = { x: this.attackMoveTargetSquad.bounds.x + this.attackMoveTargetSquad.bounds.w / 2, y: this.attackMoveTargetSquad.bounds.y + this.attackMoveTargetSquad.bounds.h / 2 };
+
+       const inRangeCount = this.nemos.filter(nemo => {
+           const dist = Math.hypot(targetCenter.x - nemo.x, targetCenter.y - nemo.y);
+           return dist <= nemo.calculatedEffectiveRange;
+       }).length;
+
+       if (inRangeCount < this.nemos.length / 2) {
+           this.setDestination(targetCenter);
+       } else {
+           this.squadDestination = null; // 사거리 내에 도달하면 이동 중지
+       }
    }
 
    updateSquadMovementState() {
@@ -107,6 +131,7 @@ class Squad {
 
    setDestination(pos) {
         // 1. 스쿼드의 목표 지점을 설정하여 '이동 중' 상태로 만듭니다.
+        this.attackMoveTargetSquad = null; // 일반 이동 시 어택땅 목표 해제
         this.squadDestination = pos;
 
         // 2. 모든 네모의 개별 목적지를 초기화합니다.
@@ -115,6 +140,11 @@ class Squad {
             n.destination = null;
             n.clearAttackMove();
         });
+   }
+
+   setAttackMoveTarget(targetSquad) {
+       this.attackMoveTargetSquad = targetSquad;
+       this.squadDestination = null; // 일반 이동 목표는 해제
    }
 
    setFormationShape(startPos, endPos, destination) {

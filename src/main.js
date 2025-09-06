@@ -588,7 +588,9 @@ canvas.addEventListener("mouseup", (e) => {
                 moveRect = null;
                 return;
             } else if (enemyS) {
-                issueAttackMove(enemyS.nemos, pos);
+                if (selectedSquads.length > 0) {
+                    selectedSquads.forEach(s => s.setAttackMoveTarget(enemyS));
+                }
                 moveRect = null;
                 return;
             }
