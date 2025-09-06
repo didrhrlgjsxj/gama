@@ -598,12 +598,15 @@ canvas.addEventListener("mouseup", (e) => {
         if (selectedSquads.length > 0) {
             if (dragW < 5 && dragH < 5) { // 단순 클릭: 현재 대형 유지하며 이동
                 selectedSquads.forEach(squad => squad.setDestination(pos));
+                moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
             } else { // 드래그: 대형 모양과 방향 지정하며 이동
                 const startPos = { x: moveRect.x1, y: moveRect.y1 };
                 const endPos = { x: moveRect.x2, y: moveRect.y2 };
-                selectedSquads.forEach(squad => squad.setFormationShape(startPos, endPos));
+                const centerPos = { x: (startPos.x + endPos.x) / 2, y: (startPos.y + endPos.y) / 2 };
+
+                selectedSquads.forEach(squad => squad.setFormationShape(startPos, endPos, centerPos));
+                moveIndicators.push(new MoveIndicator(centerPos.x, centerPos.y, 40, 20, 'yellow'));
             }
-            moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
         }
 
         // 3. 개별 유닛 이동 명령 (스쿼드에 속하지 않은 유닛들)

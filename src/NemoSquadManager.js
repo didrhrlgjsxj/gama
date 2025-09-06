@@ -118,12 +118,12 @@ class Squad {
         });
    }
 
-   setFormationShape(startPos, endPos) {
+   setFormationShape(startPos, endPos, destination) {
        const dx = endPos.x - startPos.x;
        const dy = endPos.y - startPos.y;
        const dist = Math.hypot(dx, dy);
         this.formationManager.formationWidth = Math.max(this.cellSize * 2, dist);
-        this.setDestination(endPos);
+        this.setDestination(destination);
    }
 
     updateBounds() {
