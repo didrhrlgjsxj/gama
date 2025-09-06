@@ -430,25 +430,23 @@ class Nemo {
 
         // 스쿼드 진형에 따른 이동 처리 (가장 높은 우선순위)
         let movedByFormation = false;
-        if (this.squad && this.squad.squadDestination) {
-            // 스쿼드 중심의 이동량을 그대로 적용
-            this.x += this.squad.delta.x;
-            this.y += this.squad.delta.y;
-
-            // 진형 내 자신의 위치로 부드럽게 복귀
+        if (this.squad) {
             const formationPos = this.squad.formationManager.formationPositions.get(this.id);
             if (formationPos) {
                 const dx = formationPos.x - this.x;
                 const dy = formationPos.y - this.y;
                 const dist = Math.hypot(dx, dy);
-                if (dist > 1) {
-                    // 보정 이동은 스쿼드 이동 속도보다 빠르지 않게
-                    const correctionSpeed = Math.min(dist * 0.1, this.squad.squadSpeed * 1.5);
-                    this.x += (dx / dist) * correctionSpeed;
-                    this.y += (dy / dist) * correctionSpeed;
-                    this.targetAngle = this.squad.primaryDirection;
+                // 목표 지점과의 거리가 충분히 클 때만 이동
+                if (dist > this.maxSpeed) {
+                    const step = Math.min(this.maxSpeed, dist);
+                    this.x += (dx / dist) * step;
+                    this.y += (dy / dist) * step;
                     movedByFormation = true;
+                } else if (dist > 1) { // 도착 판정 거리 내에서는 위치 고정
+                    this.x = formationPos.x;
+                    this.y = formationPos.y;
                 }
+                    this.targetAngle = this.squad.primaryDirection;
             }
         }
     

@@ -18,6 +18,7 @@ function lerpAngle(start, end, amount) {
     let difference = end - start;
     if (difference > Math.PI) difference -= 2 * Math.PI;
     if (difference < -Math.PI) difference += 2 * Math.PI;
+    if (Math.abs(difference) < 0.001) return end; // 작은 차이는 무시
     return start + difference * amount;
 }
 
@@ -25,14 +26,12 @@ class Squad {
     constructor(nemos = [], team = 'blue', cellSize = 40) {
         this.nemos = nemos;
         this.team = team;
+        this.leader = null;
         this.cellSize = cellSize;
         this.selected = false;
-        this.squadDestination = null; // 스쿼드 전체의 목표 지점        
         this.formationManager = new NemoSquadFormationManager(this);
 
-        this.squadCenter = { x: 0, y: 0 }; // 스쿼드의 가상 중심
         this.squadSpeed = 3; // 스쿼드의 이동 속도
-        this.delta = { x: 0, y: 0 }; // 프레임당 이동량
         this.primaryCombatTarget = null; // 주 경계 대상
         this.secondaryCombatTargets = []; // 보조 경계 대상 (나를 주 경계 대상으로 삼는 다른 스쿼드들)
         this.isHeadOnBattle = false; // 정면 전투 상태
@@ -41,7 +40,6 @@ class Squad {
         this.isResponseAttacker = false; // 대응 전투 상태에서 공격측인지 여부
 
         this.targetDirection = 0; // 목표 이동 방향 (라디안)
-        this.lastCenter = { x: 0, y: 0 };
 
         this.primaryDirection = 0;
         this.secondaryDirections = [
@@ -50,31 +48,46 @@ class Squad {
         ];
 
         this.type = this.determineSquadSize();
-        this.updateBounds(); // 초기 lastCenter 설정
+        this.assignLeader();
+        this.updateBounds();
    }
 
    addNemos(newNemos) {
        this.nemos.push(...newNemos);
        newNemos.forEach(n => n.squad = this);
+       if (!this.leader) this.assignLeader();
+   }
+
+   assignLeader() {
+       if (this.nemos.length === 0) {
+           this.leader = null;
+           return;
+       }
+       // 간단하게 첫 번째 네모를 리더로 지정합니다.
+       // TODO: 역할이나 능력치에 따라 더 복잡한 리더 선정 로직을 추가할 수 있습니다.
+       this.leader = this.nemos[0];
    }
 
    update() {
+       if (!this.leader || this.leader.dead) {
+           this.assignLeader();
+       }
+       if (!this.leader) return; // 스쿼드에 유닛이 없으면 업데이트 중지
+
        this.updateBounds();
-       this.squadCenter = { x: this.bounds.x + this.bounds.w / 2, y: this.bounds.y + this.bounds.h / 2 };
-       this.updateSquadMovement();
        this.updateDirections();
        this.formationManager.update();
    }
 
    setDestination(pos) {
-       this.squadDestination = pos;
-       this.nemos.forEach(n => {
-           n.clearAttackMove();
-           n.destination = null; // 개별 목적지 초기화
-       });
-       // 이동 명령 시, 스쿼드의 현재 중심을 가상 중심으로 설정
-       this.squadCenter.x = this.bounds.x + this.bounds.w / 2;
-       this.squadCenter.y = this.bounds.y + this.bounds.h / 2;
+       if (this.leader) {
+           this.leader.setDestination(pos.x, pos.y);
+           // 다른 유닛들은 리더를 따라가므로 개별 목적지를 설정하지 않습니다.
+           this.nemos.forEach(n => {
+               if (n !== this.leader) n.destination = null;
+               n.clearAttackMove();
+           });
+       }
    }
 
    setFormationShape(startPos, endPos) {
@@ -86,27 +99,6 @@ class Squad {
        this.targetDirection = Math.atan2(dy, dx);
        this.formationManager.formationWidth = Math.max(this.cellSize * 2, dist); // 드래그 길이를 진형 너비로 설정
        this.setDestination(endPos); // 최종 위치를 목표 지점으로 설정
-   }
-
-   updateSquadMovement() {
-       this.delta = { x: 0, y: 0 };
-       if (!this.squadDestination) return;
-
-       const dx = this.squadDestination.x - this.squadCenter.x;
-       const dy = this.squadDestination.y - this.squadCenter.y;
-       const dist = Math.hypot(dx, dy);
-
-       if (dist > 5) { // 도착 판정 거리
-           const step = Math.min(this.squadSpeed, dist);
-           this.delta.x = (dx / dist) * step;
-           this.delta.y = (dy / dist) * step;
-
-           this.squadCenter.x += this.delta.x;
-           this.squadCenter.y += this.delta.y;
-       } else {
-           // 목표 도착 시 squadDestination 초기화
-           this.squadDestination = null;
-       }
    }
 
     updateBounds() {
@@ -139,42 +131,40 @@ class Squad {
         // 스쿼드 타입에 따라 회전 속도 조절
         switch (this.type) {
             case SquadSizes.COMPANY:
-                return 0.3; // 가장 느림
+                return 0.01; // 가장 느림
             case SquadSizes.PLATOON:
-                return 0.5;
+                return 0.02;
             case SquadSizes.TROOP:
-                return 0.9;
+                return 0.03;
             case SquadSizes.SQUAD:
-                return 1.3; // 가장 빠름
+                return 0.04; // 가장 빠름
             default:
-                return 1;
+                return 0.03;
         }
     }
 
     updateDirections() {
         const rotationSpeed = this.getRotationSpeed();
 
-        const centerX = this.bounds.x + this.bounds.w / 2;
-        const centerY = this.bounds.y + this.bounds.h / 2;
-
         if (this.primaryCombatTarget) {
             // 주 경계 대상이 있으면, 대상을 향해 방향을 설정
             const targetCenter = this.primaryCombatTarget.bounds;
             const targetX = targetCenter.x + targetCenter.w / 2;
             const targetY = targetCenter.y + targetCenter.h / 2;
-            const dx = targetX - centerX;
-            const dy = targetY - centerY;
+            const dx = targetX - this.leader.x;
+            const dy = targetY - this.leader.y;
             this.targetDirection = Math.atan2(dy, dx);
-        } else {
-            // 주 경계 대상이 없으면, 스쿼드의 실제 이동 방향(관성)을 따른다.
-            const dx = centerX - this.lastCenter.x;
-            const dy = centerY - this.lastCenter.y;
-            if (Math.hypot(dx, dy) > 1) { // 이동 거리가 충분할 때만 방향 갱신
+        } else if (this.leader.destination) {
+            // 리더가 이동 중이면, 이동 방향을 목표 방향으로 설정
+            const dx = this.leader.destination.x - this.leader.x;
+            const dy = this.leader.destination.y - this.leader.y;
+            if (Math.hypot(dx, dy) > 1) {
                 this.targetDirection = Math.atan2(dy, dx);
             }
+        } else {
+            // 이동이나 교전이 없으면 현재 리더의 방향을 유지
+            this.targetDirection = this.leader.angle;
         }
-
-        this.lastCenter = { x: centerX, y: centerY };
 
         // 주 경계 방향을 부드럽게 회전
         this.primaryDirection = lerpAngle(this.primaryDirection, this.targetDirection, rotationSpeed);

@@ -31,21 +31,26 @@ export class NemoSquadFormationManager {
 
     assignFormationLines() {
         this.lineAssignments.clear();
+        const { leader } = this.squad;
+        if (!leader) return;
+
         if (this.tactics === 'default') {
             const line1 = [];
             const line2 = [];
+            const line3 = [];
             const remainingNemos = [];
 
-            // 1. 스쿼디오는 무조건 2열로 배치
+            // 1. 리더는 3선에 배치
+            line3.push(leader);
+
+            // 2. 나머지 유닛 분류
             this.squad.nemos.forEach(nemo => {
-                if (nemo.armyType === 'sqaudio') {
-                    line2.push(nemo);
-                } else {
+                if (nemo !== leader) {
                     remainingNemos.push(nemo);
                 }
             });
 
-            // 2. 나머지 유닛을 3:1 비율로 1열과 2열에 배치
+            // 3. 나머지 유닛을 3:1 비율로 1열과 2열에 배치
             for (let i = 0; i < remainingNemos.length; i++) {
                 if (i % 4 < 3) { // 0, 1, 2는 1열
                     line1.push(remainingNemos[i]);
@@ -54,20 +59,18 @@ export class NemoSquadFormationManager {
                 }
             }
 
-            // 3. 최종 할당
+            // 4. 최종 할당
             line1.forEach(n => { n.formationLine = 1; this.lineAssignments.set(n.id, 1); });
             line2.forEach(n => { n.formationLine = 2; this.lineAssignments.set(n.id, 2); });
+            line3.forEach(n => { n.formationLine = 3; this.lineAssignments.set(n.id, 3); });
         }
     }
 
     updateFormation() {
-        if (!this.squad.squadDestination) {
-            if (this.formationPositions.size > 0) this.squad.nemos.forEach(n => n.destination = null);
-            this.formationPositions.clear();
-            return;
-        }
-    
-        const formationCenter = this.squad.squadCenter;
+        const { leader } = this.squad;
+        if (!leader) return;
+
+        const formationCenter = { x: leader.x, y: leader.y };
         const direction = this.squad.primaryDirection;
         const perpendicular = direction + Math.PI / 2; // 대형의 좌우 방향
         let spacing = this.squad.cellSize * 1.2; // 유닛 간 기본 간격
@@ -91,14 +94,22 @@ export class NemoSquadFormationManager {
             } else {
                 spacing = 0;
             }
-            const lineOffset = (parseInt(lineNumber) - 1) * -lineDepth;
+            // 3선에 있는 리더를 기준으로 라인 오프셋 계산
+            // 1선은 전방, 2선은 중간, 3선은 기준 위치
+            const leaderLine = 3;
+            const lineOffset = (parseInt(lineNumber) - leaderLine) * -lineDepth;
             const lineCenterX = formationCenter.x + Math.cos(direction) * lineOffset;
             const lineCenterY = formationCenter.y + Math.sin(direction) * lineOffset;
     
             lineNemos.forEach((nemo, index) => {
                 const posOffset = (index - (lineCount - 1) / 2) * spacing;
-                const x = lineCenterX + Math.cos(perpendicular) * posOffset;
-                const y = lineCenterY + Math.sin(perpendicular) * posOffset;
+                let x = lineCenterX + Math.cos(perpendicular) * posOffset;
+                let y = lineCenterY + Math.sin(perpendicular) * posOffset;
+
+                // 진형 위치를 그리드에 맞춥니다.
+                const grid = this.squad.cellSize / 4; // 더 세밀한 그리드 사용
+                x = Math.round(x / grid) * grid;
+                y = Math.round(y / grid) * grid;
                 this.formationPositions.set(nemo.id, { x, y });
             });
         });

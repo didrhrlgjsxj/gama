@@ -607,18 +607,21 @@ canvas.addEventListener("mouseup", (e) => {
         }
 
         // 3. 개별 유닛 이동 명령 (스쿼드에 속하지 않은 유닛들)
-        const individualNemos = selectedNemos.filter(n => !n.squad || !n.squad.selected);
+        // 스쿼드에 속하지 않은 네모만 개별 이동 명령을 받습니다.
+        const individualNemos = selectedNemos.filter(n => !n.squad);
         if (individualNemos.length > 0) {
-            // 개별 유닛들은 기존 로직대로 중앙점 기준으로 이동
-            const currentCenter = individualNemos.reduce((acc, n) => ({ x: acc.x + n.x, y: acc.y + n.y }), { x: 0, y: 0 });
-            currentCenter.x /= individualNemos.length;
-            currentCenter.y /= individualNemos.length;
-            individualNemos.forEach(n => {
-                const destX = pos.x + (n.x - currentCenter.x);
-                const destY = pos.y + (n.y - currentCenter.y);
-                n.setDestination(destX, destY);
-            });
-            moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
+            if (dragW < 5 && dragH < 5) { // 단순 클릭 이동
+                // 개별 유닛들은 기존 로직대로 중앙점 기준으로 이동
+                const currentCenter = individualNemos.reduce((acc, n) => ({ x: acc.x + n.x, y: acc.y + n.y }), { x: 0, y: 0 });
+                currentCenter.x /= individualNemos.length;
+                currentCenter.y /= individualNemos.length;
+                individualNemos.forEach(n => {
+                    const destX = pos.x + (n.x - currentCenter.x);
+                    const destY = pos.y + (n.y - currentCenter.y);
+                    n.setDestination(destX, destY);
+                });
+                moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
+            }
         }
         moveRect = null;
         e.preventDefault();
@@ -699,9 +702,13 @@ function gameLoop() {
     // 고스트 네모 및 작업자 위치 갱신
     if (ghostSquad) {
         const { x, y } = worldMouse();
-        const currentCenter = ghostSquad.squadCenter;
-        const dx = x - currentCenter.x;
-        const dy = y - currentCenter.y;
+        // squadCenter가 leader 기반으로 변경되었으므로 leader 위치를 중심으로 사용합니다.
+        let dx = 0;
+        let dy = 0;
+        if (ghostSquad.leader) {
+            dx = x - ghostSquad.leader.x;
+            dy = y - ghostSquad.leader.y;
+        }
 
         ghostSquad.nemos.forEach(n => {
             n.x += dx;
