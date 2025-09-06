@@ -227,7 +227,10 @@ class Nemo {
 
         this.rotateTowards = (angle) => {
             let diff = angle - this.angle;
-            diff = ((diff + Math.PI) % (2 * Math.PI)) - Math.PI;
+            // JavaScript의 % 연산자는 음수에서 다르게 동작하므로, 각도 차이를 -PI ~ PI 범위로 정확하게 정규화합니다.
+            while (diff < -Math.PI) diff += 2 * Math.PI;
+            while (diff > Math.PI) diff -= 2 * Math.PI;
+
             if (Math.abs(diff) <= this.rotationSpeed) {
                 this.angle = angle;
                 return true;

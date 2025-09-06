@@ -26,12 +26,12 @@ const buildMenu = document.getElementById("buildMenu");
 // 배경 이미지 설정
 const background = new Image();
 background.src = "src/BackGround.webp"; // 배경 이미지 경로
-const backgroundWidth = 1600; // 배경 너비 (원하는 크기로 설정)
-const backgroundHeight = 1200; // 배경 높이 (원하는 크기로 설정)
+const backgroundWidth = 4800; // 배경 너비 (1600 * 3)
+const backgroundHeight = 3600; // 배경 높이 (1200 * 3)
 
 
 // Nemo 보다 약간 작은 크기의 그리드를 생성
-const mainGrid = new Grid(40);
+const mainGrid = new Grid(40, backgroundWidth, backgroundHeight);
 const squadManager = new SquadManager(mainGrid.cellSize);
 
 // 자원 및 작업자 관련 변수

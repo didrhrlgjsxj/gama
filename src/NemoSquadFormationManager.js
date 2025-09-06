@@ -18,8 +18,9 @@ export class NemoSquadFormationManager {
         this.updateFormation();
 
         // 주기적으로 진형을 재할당하여 유닛 손실 등에 대응합니다.
+        // 전투 중(isEngaging)이 아닐 때만 진형을 재정비합니다.
         const now = Date.now();
-        if (now - this.lastFormationCheckTime > this.formationCheckInterval) {
+        if (!this.squad.isEngaging && now - this.lastFormationCheckTime > this.formationCheckInterval) {
             this.reassignFormationLines();
         }
     }

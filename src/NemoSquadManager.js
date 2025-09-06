@@ -40,6 +40,7 @@ class Squad {
         this.vigilanceBattleTarget = null; // 경계 전투 상태 대상
         this.responseBattleTarget = null; // 대응 전투 상태 대상
         this.isResponseAttacker = false; // 대응 전투 상태에서 공격측인지 여부
+        this.isEngaging = false; // 전투 중인지 여부
 
         this.targetDirection = 0; // 목표 이동 방향 (라디안)
 
@@ -81,9 +82,7 @@ class Squad {
        }
        if (!this.leader) return; // 스쿼드에 유닛이 없으면 업데이트 중지
 
-       this.updateBounds();
        this.updateSquadMovementState();
-       this.updateDirections();
        this.formationManager.update();
    }
 
@@ -176,8 +175,10 @@ class Squad {
             const targetCenter = this.primaryCombatTarget.bounds;
             const targetX = targetCenter.x + targetCenter.w / 2;
             const targetY = targetCenter.y + targetCenter.h / 2;
-            const dx = targetX - this.leader.x;
-            const dy = targetY - this.leader.y;
+            const squadCenterX = this.bounds.x + this.bounds.w / 2;
+            const squadCenterY = this.bounds.y + this.bounds.h / 2;
+            const dx = targetX - squadCenterX;
+            const dy = targetY - squadCenterY;
             this.targetDirection = Math.atan2(dy, dx);
         } else if (this.squadDestination) {
             // 스쿼드가 이동 중이면, 이동 방향을 목표 방향으로 설정
@@ -186,9 +187,6 @@ class Squad {
             if (Math.hypot(dx, dy) > 1) {
                 this.targetDirection = Math.atan2(dy, dx);
             }
-        } else {
-            // 이동이나 교전이 없으면 현재 리더의 방향을 유지
-            this.targetDirection = this.leader.angle;
         }
 
         // 주 경계 방향을 부드럽게 회전
@@ -567,13 +565,20 @@ class SquadManager {
 
     // Build squads from given nemos array
     updateSquads(nemos) {
-        this.squads.forEach(s => s.update());
+        // 1. 각 스쿼드의 내부 상태를 먼저 업데이트 (리더 재임명 등)
+        this.squads.forEach(s => {
+            s.update();
+        });
 
         // 스쿼드별 주 경계 대상 및 정면 전투 상태 설정
         this.squads.forEach(squad => {
             let nearestEnemySquad = null;
             const recognitionRange = squad.calculateRecognitionRange(); // 스쿼드의 고유 인식 범위 계산
             let minDistance = recognitionRange; 
+
+            // 바운드와 방향을 적 탐지 전에 업데이트
+            squad.updateBounds();
+            squad.updateDirections();
 
             this.squads.forEach(otherSquad => {
                 if (squad.team !== otherSquad.team) {
@@ -592,6 +597,7 @@ class SquadManager {
             });
 
             squad.primaryCombatTarget = nearestEnemySquad;
+            squad.isEngaging = !!nearestEnemySquad; // 적이 있으면 전투 상태로 설정
         });
 
         // 정면 전투 상태 확인

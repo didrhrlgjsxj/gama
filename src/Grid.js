@@ -1,11 +1,11 @@
 // Grid.js
 
 class Grid {
-    constructor(cellSize) {
+    constructor(cellSize, width, height) {
         this.cellSize = cellSize; // 셀 크기 설정
-        // 전체 그리드 영역을 기존보다 2배 넓게 설정
-        this.gridWidth = Math.ceil((window.innerWidth * 2) / this.cellSize);
-        this.gridHeight = Math.ceil((window.innerHeight * 2) / this.cellSize);
+        // 전체 그리드 영역을 맵 전체 크기로 설정
+        this.gridWidth = Math.ceil(width / this.cellSize);
+        this.gridHeight = Math.ceil(height / this.cellSize);
 
         // 그리드를 한 번만 그려 두기 위한 오프스크린 캔버스 생성
         this.canvas = document.createElement('canvas');
