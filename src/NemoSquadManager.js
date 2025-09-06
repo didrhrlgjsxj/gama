@@ -29,6 +29,8 @@ class Squad {
         this.leader = null;
         this.cellSize = cellSize;
         this.selected = false;
+        this.squadDestination = null; // 스쿼드 전체의 목표 지점        
+        this.currentPos = { x: 0, y: 0 }; // 스쿼드의 현재 가상 중심 위치
         this.formationManager = new NemoSquadFormationManager(this);
 
         this.squadSpeed = 3; // 스쿼드의 이동 속도
@@ -50,6 +52,7 @@ class Squad {
         this.type = this.determineSquadSize();
         this.assignLeader();
         this.updateBounds();
+        this.currentPos = { x: this.bounds.x + this.bounds.w / 2, y: this.bounds.y + this.bounds.h / 2 };
    }
 
    addNemos(newNemos) {
@@ -59,12 +62,16 @@ class Squad {
    }
 
    assignLeader() {
+       // 이미 유효한 리더가 있다면 교체하지 않습니다.
+       if (this.leader && !this.leader.dead && this.nemos.includes(this.leader)) {
+           return;
+       }
+
        if (this.nemos.length === 0) {
            this.leader = null;
            return;
        }
-       // 간단하게 첫 번째 네모를 리더로 지정합니다.
-       // TODO: 역할이나 능력치에 따라 더 복잡한 리더 선정 로직을 추가할 수 있습니다.
+       // 리더가 없거나 죽었으면, 스쿼드 내 첫 번째 유닛을 새 리더로 지정합니다.
        this.leader = this.nemos[0];
    }
 
@@ -75,30 +82,48 @@ class Squad {
        if (!this.leader) return; // 스쿼드에 유닛이 없으면 업데이트 중지
 
        this.updateBounds();
+       this.updateSquadMovementState();
        this.updateDirections();
        this.formationManager.update();
    }
 
-   setDestination(pos) {
-       if (this.leader) {
-           this.leader.setDestination(pos.x, pos.y);
-           // 다른 유닛들은 리더를 따라가므로 개별 목적지를 설정하지 않습니다.
-           this.nemos.forEach(n => {
-               if (n !== this.leader) n.destination = null;
-               n.clearAttackMove();
-           });
+   updateSquadMovementState() {
+       if (this.squadDestination) {
+           const dx = this.squadDestination.x - this.currentPos.x;
+           const dy = this.squadDestination.y - this.currentPos.y;
+           const dist = Math.hypot(dx, dy);
+
+           if (dist > this.squadSpeed) {
+               this.currentPos.x += (dx / dist) * this.squadSpeed;
+               this.currentPos.y += (dy / dist) * this.squadSpeed;
+           } else {
+               this.currentPos.x = this.squadDestination.x;
+               this.currentPos.y = this.squadDestination.y;
+               this.squadDestination = null; // 스쿼드 이동 완료
+               // 도착 후 개별 네모들의 destination을 null로 설정
+               this.nemos.forEach(n => n.destination = null);
+           }
        }
+   }
+
+   setDestination(pos) {
+        // 1. 스쿼드의 목표 지점을 설정하여 '이동 중' 상태로 만듭니다.
+        this.squadDestination = pos;
+
+        // 2. 모든 네모의 개별 목적지를 초기화합니다.
+        // 이제 네모는 스쿼드의 formationManager가 계산하는 위치를 따라갑니다.
+        this.nemos.forEach(n => {
+            n.destination = null;
+            n.clearAttackMove();
+        });
    }
 
    setFormationShape(startPos, endPos) {
        const dx = endPos.x - startPos.x;
        const dy = endPos.y - startPos.y;
        const dist = Math.hypot(dx, dy);
-
-       // 드래그 방향을 새로운 목표 방향으로 설정
-       this.targetDirection = Math.atan2(dy, dx);
-       this.formationManager.formationWidth = Math.max(this.cellSize * 2, dist); // 드래그 길이를 진형 너비로 설정
-       this.setDestination(endPos); // 최종 위치를 목표 지점으로 설정
+        this.formationManager.formationWidth = Math.max(this.cellSize * 2, dist);
+        this.setDestination(endPos);
    }
 
     updateBounds() {
@@ -154,10 +179,10 @@ class Squad {
             const dx = targetX - this.leader.x;
             const dy = targetY - this.leader.y;
             this.targetDirection = Math.atan2(dy, dx);
-        } else if (this.leader.destination) {
-            // 리더가 이동 중이면, 이동 방향을 목표 방향으로 설정
-            const dx = this.leader.destination.x - this.leader.x;
-            const dy = this.leader.destination.y - this.leader.y;
+        } else if (this.squadDestination) {
+            // 스쿼드가 이동 중이면, 이동 방향을 목표 방향으로 설정
+            const dx = this.squadDestination.x - (this.bounds.x + this.bounds.w / 2);
+            const dy = this.squadDestination.y - (this.bounds.y + this.bounds.h / 2);
             if (Math.hypot(dx, dy) > 1) {
                 this.targetDirection = Math.atan2(dy, dx);
             }

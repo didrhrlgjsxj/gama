@@ -1,4 +1,4 @@
-import { Platform, MovePlatform, AttackPlatform } from './Platform.js';  // MovePlatform과 AttackPlatform을 가져옵니다.
+import { Platform, AttackPlatform } from './Platform.js';  // MovePlatform과 AttackPlatform을 가져옵니다.
 import Grid from './Grid.js'; // Grid를 임포트
 import { mainGrid, deathEffects, gatherEffects } from './main.js';  // mainGrid와 deathEffects, gatherEffects를 가져옵니다.
 import Gear from './Gear.js';
@@ -148,7 +148,7 @@ class Nemo {
         const start = attackCount % 2 === 0 ? step / 2 : 0;
         this.platforms = platformTypes.map(type => {
             if (type === "move") return new MovePlatform(this);
-            if (type === "attack") {
+            if (type === "attack") { // "move" 타입은 제거됨
                 if (attackCount === 1) {
                     // 단일 공격 플랫폼은 네모가 손에 들고 있는 무기(On-hand)
                     return new AttackPlatform(this, null, true);
@@ -198,11 +198,7 @@ class Nemo {
 
         this.setDestination = (x, y) => {
             this.destination = { x, y };
-            const moveP = this.platforms.find(p => p instanceof MovePlatform);
-            if (moveP) {
-                moveP.destination = { x, y };
-            }
-        };
+        }; // MovePlatform 관련 코드 제거
 
         this.startAttackMove = (targets = [], pos = null, propagate = true) => {
             if (propagate && this.squad) {
@@ -393,105 +389,54 @@ class Nemo {
             }
         }
 
-        if (this.destination && this.unitType !== "army") {
+        // 스쿼드 진형 유지 로직 (정지 또는 이동 중)
+        let movedByFormation = false;
+        if (this.squad && this.squad.formationManager.formationPositions.has(this.id)) {
+            const formationPos = this.squad.formationManager.formationPositions.get(this.id);
+            const dx = formationPos.x - this.x;
+            const dy = formationPos.y - this.y;
+            const dist = Math.hypot(dx, dy);
+
+            if (dist > this.maxSpeed) {
+                this.targetAngle = Math.atan2(dy, dx);
+                const turned = this.rotateTowards(this.targetAngle);
+                // 목표 방향을 향했을 때만 전진합니다.
+                if (turned) { // 회전이 완료되어야만 이동합니다.
+                    const step = Math.min(this.maxSpeed, dist);
+                    this.x += Math.cos(this.angle) * step;
+                    this.y += Math.sin(this.angle) * step;
+                }
+            } else {
+                // 목표 지점에 도착하면 목적지를 초기화합니다.
+                this.x = formationPos.x;
+                this.y = formationPos.y;
+            }
+            movedByFormation = true;
+        } else if (this.destination) { // 개별 이동 로직
             const dx = this.destination.x - this.x;
             const dy = this.destination.y - this.y;
             const dist = Math.hypot(dx, dy);
-            const ang = Math.atan2(dy, dx);
-            this.targetAngle = ang;
-            this.rotateTowards(this.targetAngle);
-            const step = Math.min(this.maxSpeed, dist);
-            this.x += Math.cos(this.angle) * step;
-            this.y += Math.sin(this.angle) * step;
-            if (dist <= this.maxSpeed) {
+
+            if (dist > this.maxSpeed) {
+                this.targetAngle = Math.atan2(dy, dx);
+                const turned = this.rotateTowards(this.targetAngle);
+                // 목표 방향을 향했을 때만 전진합니다.
+                if (turned) {
+                    const step = Math.min(this.maxSpeed, dist);
+                    this.x += Math.cos(this.targetAngle) * step;
+                    this.y += Math.sin(this.targetAngle) * step;
+                }
+            } else {
+                // 목표 지점에 도착하면 목적지를 초기화합니다.
                 this.x = this.destination.x;
                 this.y = this.destination.y;
                 this.destination = null;
-                this.ignoreEnemies = false;
-                const moveP = this.platforms.find(p => p instanceof MovePlatform);
-                if (moveP) {
-                    moveP.destination = null;
-                    moveP.mode = "return";
-                }
-                if (this.attackMove && this.attackTargets.length === 0 && !this.attackMovePos) {
-                    this.clearAttackMove();
-                }
+                this.clearAttackMove(); // 어택땅이었으면 도착 후 명령 클리어
             }
         }
 
-
-        // 각 플랫폼에 대해 업데이트 (플랫폼 내부에서 네모의 위치를 업데이트합니다)
+        // 각 플랫폼에 대해 업데이트
         this.platforms.forEach(platform => platform.update());
-
-        // 온핸드 무기가 사격 중인지 확인
-
-        const isShooting = this.platforms.some(p =>
-            p instanceof AttackPlatform && p.onHand && p.mode2 === 'attackOn');
-
-        // 스쿼드 진형에 따른 이동 처리 (가장 높은 우선순위)
-        let movedByFormation = false;
-        if (this.squad) {
-            const formationPos = this.squad.formationManager.formationPositions.get(this.id);
-            if (formationPos) {
-                const dx = formationPos.x - this.x;
-                const dy = formationPos.y - this.y;
-                const dist = Math.hypot(dx, dy);
-                // 목표 지점과의 거리가 충분히 클 때만 이동
-                if (dist > this.maxSpeed) {
-                    const step = Math.min(this.maxSpeed, dist);
-                    this.x += (dx / dist) * step;
-                    this.y += (dy / dist) * step;
-                    movedByFormation = true;
-                } else if (dist > 1) { // 도착 판정 거리 내에서는 위치 고정
-                    this.x = formationPos.x;
-                    this.y = formationPos.y;
-                }
-                    this.targetAngle = this.squad.primaryDirection;
-            }
-        }
-    
-
-        if (this.hp <= 0 && !this.dead) {
-            this.destroyed(); // HP가 0이 되면 네모가 죽는다
-        }
-
-        if (this.unitType === "army") {
-            if (!movedByFormation && !isShooting && this.moveVector && (this.moveVector.x || this.moveVector.y)) {
-                this.x += this.moveVector.x;
-                this.y += this.moveVector.y;
-                const mag = Math.hypot(this.moveVector.x, this.moveVector.y);
-                if (mag > 0.01) {
-                    this.targetAngle = Math.atan2(this.moveVector.y, this.moveVector.x);
-                }
-            } else if (!movedByFormation && !isShooting && this.destination) {
-                const dx = this.destination.x - this.x;
-                const dy = this.destination.y - this.y;
-                const dist = Math.hypot(dx, dy);
-                const step = Math.min(this.maxSpeed, dist);
-                const ang = Math.atan2(dy, dx);
-                this.targetAngle = ang;
-                this.rotateTowards(this.targetAngle);
-                this.x += Math.cos(this.angle) * step;
-                this.y += Math.sin(this.angle) * step;
-            }
-            if (this.destination) {
-                const dist = Math.hypot(this.destination.x - this.x, this.destination.y - this.y);
-                if (dist < 5) {
-                    this.x = this.destination.x;
-                    this.y = this.destination.y;
-                    this.destination = null;
-                    this.ignoreEnemies = false;
-                    const moveP = this.platforms.find(p => p instanceof MovePlatform);
-                    if (moveP) {
-                        moveP.destination = null;
-                        moveP.mode = "return";
-                    }
-                    if (this.attackMove && this.attackTargets.length === 0 && !this.attackMovePos) {
-                        this.clearAttackMove();
-                    }
-                }
-            }
-        }
 
         const turned = this.rotateTowards(this.targetAngle);
 
@@ -500,11 +445,15 @@ class Nemo {
             this.x += Math.cos(this.angle) * this.maxSpeed * dir;
             this.y += Math.sin(this.angle) * this.maxSpeed * dir;
         }
-        
+
+        if (this.hp <= 0 && !this.dead) {
+            this.destroyed(); // HP가 0이 되면 네모가 죽는다
+        }
+
         // Update isMoving based on whether the unit is moving or not
         this.isMoving = (this.unitType === "unit" && this.moving && turned && !isShooting) ||
                         this.unitType === "army" && this.moveVector && (this.moveVector.x || this.moveVector.y) ||
-                        this.destination !== null || movedByFormation;
+                        (this.destination !== null) || movedByFormation;
 
         if (this.shieldFlash > 0) this.shieldFlash--;
 

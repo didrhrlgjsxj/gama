@@ -330,7 +330,7 @@ function createGhostSquad(squadType, team) {
         if (squadType === 'A') { // A형: unit 3기
             newNemo = new Nemo(x + offsetX, y + offsetY, team, ["attack"], "unit", "sqaudio", "ranged", false);
         } else { // B형: sqaudio 3기
-            newNemo = new Nemo(x + offsetX, y + offsetY, team, ["move", "attack", "attack"], "army", "sqaudio", "ranged", true);
+            newNemo = new Nemo(x + offsetX, y + offsetY, team, ["attack", "attack"], "army", "sqaudio", "ranged", true);
         }
         newNemo.ghost = true;
         squadNemos.push(newNemo);

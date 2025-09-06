@@ -67,14 +67,22 @@ export class NemoSquadFormationManager {
     }
 
     updateFormation() {
+
         const { leader } = this.squad;
         if (!leader) return;
 
-        const formationCenter = { x: leader.x, y: leader.y };
-        const direction = this.squad.primaryDirection;
+        const direction = this.squad.primaryDirection; // 스쿼드의 주 방향을 사용
         const perpendicular = direction + Math.PI / 2; // 대형의 좌우 방향
         let spacing = this.squad.cellSize * 1.2; // 유닛 간 기본 간격
         const lineDepth = this.squad.cellSize * 2; // 라인 간 깊이
+
+        // 스쿼드의 현재 중심점을 기준으로 진형을 계산합니다.
+        // 이동 중일 때는 가상 중심점을, 정지 시에는 리더의 위치를 사용합니다.
+        const squadCenter = this.squad.squadDestination
+            ? { x: this.squad.currentPos.x, y: this.squad.currentPos.y }
+            : { x: leader.x, y: leader.y };
+
+        this.formationPositions.clear(); // 매번 위치를 새로 계산
     
         const lines = { 1: [], 2: [], 3: [] };
         this.squad.nemos.forEach(n => {
@@ -98,20 +106,70 @@ export class NemoSquadFormationManager {
             // 1선은 전방, 2선은 중간, 3선은 기준 위치
             const leaderLine = 3;
             const lineOffset = (parseInt(lineNumber) - leaderLine) * -lineDepth;
-            const lineCenterX = formationCenter.x + Math.cos(direction) * lineOffset;
-            const lineCenterY = formationCenter.y + Math.sin(direction) * lineOffset;
+            const lineCenterX = squadCenter.x + Math.cos(direction) * lineOffset;
+            const lineCenterY = squadCenter.y + Math.sin(direction) * lineOffset;
     
             lineNemos.forEach((nemo, index) => {
                 const posOffset = (index - (lineCount - 1) / 2) * spacing;
                 let x = lineCenterX + Math.cos(perpendicular) * posOffset;
                 let y = lineCenterY + Math.sin(perpendicular) * posOffset;
-
-                // 진형 위치를 그리드에 맞춥니다.
-                const grid = this.squad.cellSize / 4; // 더 세밀한 그리드 사용
-                x = Math.round(x / grid) * grid;
-                y = Math.round(y / grid) * grid;
+                // 대기 중 진형 유지는 그리드에 맞추지 않아 더 부드럽게 보입니다.
                 this.formationPositions.set(nemo.id, { x, y });
             });
         });
+    }
+
+    calculateDestinationFormation(center, direction) {
+        let leaderPoint = null;
+        const otherPoints = [];
+
+        const perpendicular = direction + Math.PI / 2;
+        let spacing = this.squad.cellSize * 1.2;
+        const lineDepth = this.squad.cellSize * 2;
+
+        const lines = { 1: [], 2: [], 3: [] };
+        this.squad.nemos.forEach(n => {
+            if (lines[n.formationLine]) {
+                lines[n.formationLine].push(n);
+            }
+        });
+
+        Object.keys(lines).forEach(lineNumber => {
+            const lineNemos = lines[lineNumber];
+            const lineCount = lineNemos.length;
+            if (lineCount === 0) return;
+
+            if (lineCount > 1) {
+                spacing = this.formationWidth / (lineCount - 1);
+            } else {
+                spacing = 0;
+            }
+
+            // 목표 지점(center)을 기준으로 라인 오프셋 계산
+            // 3선이 기준이 되도록 조정
+            const leaderLine = 3;
+            const lineOffset = (parseInt(lineNumber) - leaderLine) * -lineDepth;
+            const lineCenterX = center.x + Math.cos(direction) * lineOffset;
+            const lineCenterY = center.y + Math.sin(direction) * lineOffset;
+
+            lineNemos.forEach((nemo, i) => {
+                const posOffset = (i - (lineCount - 1) / 2) * spacing;
+                let x = lineCenterX + Math.cos(perpendicular) * posOffset;
+                let y = lineCenterY + Math.sin(perpendicular) * posOffset;
+
+                const grid = this.squad.cellSize / 4;
+                x = Math.round(x / grid) * grid;
+                y = Math.round(y / grid) * grid;
+
+                if (nemo === this.squad.leader) {
+                    leaderPoint = { x, y };
+                } else {
+                    otherPoints.push({ x, y });
+                }
+            });
+        });
+
+        // 리더의 목적지와 나머지 유닛들의 목적지를 분리하여 반환합니다.
+        return { leaderPoint, otherPoints };
     }
 }

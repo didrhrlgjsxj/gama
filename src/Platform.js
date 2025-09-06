@@ -1,5 +1,4 @@
 // Platform.js
-import { mainGrid } from './main.js';  // mainGrid를 가져옵니다.
 import HitEffect, { mixWithBlack } from './HitEffect.js';
 import MuzzleFlash from './MuzzleFlash.js';
 
@@ -76,85 +75,6 @@ class Platform {
 
     draw(ctx) { /* 기존 코드 유지 */ }
 }
-
-class MovePlatform extends Platform {
-    constructor(parent) {
-        super(parent, "move");
-        this.width = 30;
-        this.height = 10;
-        this.moveMagnitude = 0; // moveVector 크기를 저장할 프로퍼티 추가
-        this.destination = null; // 이동 목표 지점
-        if (!MovePlatform.offCanvas) {
-            const c = document.createElement('canvas');
-            c.width = this.width;
-            c.height = this.height;
-            const ictx = c.getContext('2d');
-            ictx.fillStyle = 'black';
-            ictx.fillRect(0, 0, this.width, this.height);
-            MovePlatform.offCanvas = c;
-        }
-    }
-
-    update() {
-        super.update(); // 플랫폼 공통 업데이트
-
-        // 목적지가 설정된 경우 그 방향으로 이동
-        if (this.destination) {
-            const dx = this.destination.x - this.x;
-            const dy = this.destination.y - this.y;
-            const dist = Math.hypot(dx, dy);
-            // 플랫폼이 목표 지점에 근접하면 더 이상 끌지 않고 복귀
-            const haltRange = 10;
-            if (dist < haltRange) {
-                this.destination = null;
-                this.mode = "return";
-            } else {
-                this.angle = Math.atan2(dy, dx);
-                this.mode = "moveOn";
-            }
-        }
-
-        // 거리 제한 (Nemo로부터 최대 거리 초과 방지)
-        const distance = Math.hypot(this.x - this.parent.x, this.y - this.parent.y);
-        if (distance > this.maxDistance) {
-            const angle = Math.atan2(this.y - this.parent.y, this.x - this.parent.x);
-            this.x = this.parent.x + Math.cos(angle) * this.maxDistance;
-            this.y = this.parent.y + Math.sin(angle) * this.maxDistance;
-        }
-
-    }
-
-    draw(ctx) {
-
-        // 무브 플랫폼 빔(선) 그리기: moveMagnitude가 0보다 클 때, Nemo와 플랫폼 사이를 연결
-        if (this.moveMagnitude > 0) {
-            ctx.save();
-            // 연한 초록색(투명도 포함)로 선을 설정
-            ctx.strokeStyle = "rgba(134, 221, 134, 0.75)"; // lightgreen with 50% opacity
-            // 선의 두께는 moveMagnitude에 비례 (필요에 따라 배율 조절)
-
-            ctx.lineWidth = this.moveMagnitude * 3; 
-            ctx.beginPath();
-            ctx.moveTo(this.parent.x, this.parent.y);
-            ctx.lineTo(this.x, this.y);
-            ctx.stroke();
-            ctx.restore();
-        }
-
-
-        ctx.save();
-        ctx.translate(this.x, this.y);
-        const angleToNemo = Math.atan2(
-            this.parent.y - this.y,
-            this.parent.x - this.x
-        );
-        ctx.rotate(angleToNemo + Math.PI/2); // 항상 Nemo를 향하도록 회전
-        ctx.drawImage(MovePlatform.offCanvas, -this.width/2, -this.height/2);
-        ctx.restore();
-    }
-}
-
-MovePlatform.offCanvas = null;
 
 
 // AttackPlatform은 Platform을 상속받아 공격 관련 로직을 추가합니다.
@@ -354,4 +274,4 @@ AttackPlatform.getGunCanvas = function(team) {
     return this.gunCache[key];
 };
 
-export { Platform, MovePlatform, AttackPlatform };
+export { Platform, AttackPlatform };
