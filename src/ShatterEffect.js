@@ -28,6 +28,8 @@ class ShatterEffect {
         const alpha = Math.max(0, 1 - this.age / this.duration);
         ctx.save();
         ctx.globalAlpha = alpha;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = this.color;
         ctx.fillStyle = this.color;
         this.pieces.forEach(p => {
             ctx.save();

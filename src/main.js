@@ -169,6 +169,11 @@ window.addEventListener('keyup', (e) => {
         }
         e.preventDefault();
     }
+    if (e.key === 'g' || e.key === 'G') {
+        const pos = worldMouse();
+        handleRightClick(pos);
+        e.preventDefault();
+    }
 });
 
 function getAllSelectedNemos() {
@@ -341,6 +346,68 @@ function createGhostSquad(squadType, team) {
     squadNemos.forEach(n => n.squad = ghostSquad);
 }
 
+/**
+ * 마우스 우클릭 또는 'g' 키 입력에 대한 모든 명령을 처리합니다.
+ * @param {{x: number, y: number}} pos - 월드 좌표계의 클릭 위치
+ */
+function handleRightClick(pos) {
+    const selectedUnits = getAllSelectedNemos();
+    const hasCombatUnits = selectedUnits.length > 0 || selectedSquads.length > 0;
+    const hasWorkers = selectedWorkers.length > 0;
+
+    if (!hasCombatUnits && !hasWorkers) return;
+
+    const team = hasCombatUnits ? (selectedUnits[0]?.team || selectedSquads[0]?.team) : selectedWorkers[0].team;
+
+    // 1. 적 유닛/스쿼드 공격 (전투 유닛이 선택된 경우에만)
+    if (hasCombatUnits) {
+        const enemyN = enemyNemoAt(pos, team);
+        if (enemyN) {
+            issueAttackMove([enemyN], { x: enemyN.x, y: enemyN.y });
+            return;
+        }
+        const enemyS = enemySquadAt(pos, team);
+        if (enemyS) {
+            if (selectedSquads.length > 0) {
+                selectedSquads.forEach(s => s.setAttackMoveTarget(enemyS));
+            } else { // 개별 유닛으로 스쿼드 공격
+                issueAttackMove(enemyS.nemos, { x: enemyS.bounds.x + enemyS.bounds.w / 2, y: enemyS.bounds.y + enemyS.bounds.h / 2 });
+            }
+            return;
+        }
+    }
+
+    // 2. 스쿼드 이동 명령
+    if (selectedSquads.length > 0) {
+        selectedSquads.forEach(squad => squad.setDestination(pos));
+        moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
+    }
+
+    // 3. 개별 유닛 이동 명령 (스쿼드에 속하지 않은 유닛들)
+    const individualNemos = selectedNemos.filter(n => !n.squad);
+    if (individualNemos.length > 0) {
+        const currentCenter = individualNemos.reduce((acc, n) => ({ x: acc.x + n.x, y: acc.y + n.y }), { x: 0, y: 0 });
+        currentCenter.x /= individualNemos.length;
+        currentCenter.y /= individualNemos.length;
+        individualNemos.forEach(n => {
+            const destX = pos.x + (n.x - currentCenter.x);
+            const destY = pos.y + (n.y - currentCenter.y);
+            n.setDestination(destX, destY);
+        });
+        if (selectedSquads.length === 0) { // 스쿼드 이동 표시와 중복 방지
+            moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
+        }
+    }
+
+    // 4. 작업자 이동 명령
+    if (hasWorkers) {
+        selectedWorkers.forEach(w => w.manualTarget = pos);
+        if (!hasCombatUnits) { // 전투 유닛 이동 표시와 중복 방지
+            moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'green'));
+        }
+    }
+}
+
 
 redUnitBtn.addEventListener("click", () => createGhostSquad("A", "red"));
 redArmyBtn.addEventListener("click", () => createGhostSquad("B", "red"));
@@ -427,20 +494,12 @@ canvas.addEventListener("mousedown", (e) => {
             isSelecting = true;
             selectionStart = pos;
             selectionRect = { x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y };
-            selectionStartedWithSelection = selectedAny;
         }
     }
     if (e.button === 2) {
-        if (selectedNemos.length > 0 || selectedSquads.length > 0) {
-            isMoveDragging = true;
-            moveRect = { x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y };
-            e.preventDefault();
-        } else if (selectedWorkers.length > 0) {
-            selectedWorkers.forEach(w => {
-                w.manualTarget = pos;
-            });
-            e.preventDefault();
-        }
+        rightClickDragStarted = true;
+        moveRect = { x1: pos.x, y1: pos.y, x2: pos.x, y2: pos.y };
+        e.preventDefault();
     }
 });
 
@@ -450,7 +509,7 @@ canvas.addEventListener("mousemove", (e) => {
         selectionRect.x2 = pos.x;
         selectionRect.y2 = pos.y;
     }
-    if (isMoveDragging && moveRect) {
+    if (rightClickDragStarted && moveRect) {
         const pos = worldMouse();
         moveRect.x2 = pos.x;
         moveRect.y2 = pos.y;
@@ -566,67 +625,26 @@ canvas.addEventListener("mouseup", (e) => {
         }
 
         selectionRect = null;
-        selectionStartedWithSelection = false;
     }
 
-    if (isMoveDragging && e.button === 2) {
-        isMoveDragging = false;
+    if (rightClickDragStarted && e.button === 2) {
+        rightClickDragStarted = false;
         const pos = worldMouse();
         moveRect.x2 = pos.x;
         moveRect.y2 = pos.y;
         const dragW = Math.abs(moveRect.x2 - moveRect.x1);
         const dragH = Math.abs(moveRect.y2 - moveRect.y1);
-        const targets = getAllSelectedNemos();
-        const team = targets[0] ? targets[0].team : null;
 
-        // 1. 적 유닛/스쿼드 공격
         if (dragW < 5 && dragH < 5) {
-            const enemyN = enemyNemoAt(pos, team);
-            const enemyS = enemySquadAt(pos, team);
-            if (enemyN) {
-                issueAttackMove([enemyN], {x: enemyN.x, y: enemyN.y});
-                moveRect = null;
-                return;
-            } else if (enemyS) {
-                if (selectedSquads.length > 0) {
-                    selectedSquads.forEach(s => s.setAttackMoveTarget(enemyS));
-                }
-                moveRect = null;
-                return;
-            }
-        }
-
-        // 2. 스쿼드 이동 명령
-        if (selectedSquads.length > 0) {
-            if (dragW < 5 && dragH < 5) { // 단순 클릭: 현재 대형 유지하며 이동
-                selectedSquads.forEach(squad => squad.setDestination(pos));
-                moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
-            } else { // 드래그: 대형 모양과 방향 지정하며 이동
-                const startPos = { x: moveRect.x1, y: moveRect.y1 };
-                const endPos = { x: moveRect.x2, y: moveRect.y2 };
-                const centerPos = { x: (startPos.x + endPos.x) / 2, y: (startPos.y + endPos.y) / 2 };
-
-                selectedSquads.forEach(squad => squad.setFormationShape(startPos, endPos, centerPos));
-                moveIndicators.push(new MoveIndicator(centerPos.x, centerPos.y, 40, 20, 'yellow'));
-            }
-        }
-
-        // 3. 개별 유닛 이동 명령 (스쿼드에 속하지 않은 유닛들)
-        // 스쿼드에 속하지 않은 네모만 개별 이동 명령을 받습니다.
-        const individualNemos = selectedNemos.filter(n => !n.squad);
-        if (individualNemos.length > 0) {
-            if (dragW < 5 && dragH < 5) { // 단순 클릭 이동
-                // 개별 유닛들은 기존 로직대로 중앙점 기준으로 이동
-                const currentCenter = individualNemos.reduce((acc, n) => ({ x: acc.x + n.x, y: acc.y + n.y }), { x: 0, y: 0 });
-                currentCenter.x /= individualNemos.length;
-                currentCenter.y /= individualNemos.length;
-                individualNemos.forEach(n => {
-                    const destX = pos.x + (n.x - currentCenter.x);
-                    const destY = pos.y + (n.y - currentCenter.y);
-                    n.setDestination(destX, destY);
-                });
-                moveIndicators.push(new MoveIndicator(pos.x, pos.y, 40, 20, 'yellow'));
-            }
+            // 드래그 거리가 짧으면 일반 우클릭(이동/공격)으로 처리합니다.
+            handleRightClick(pos);
+        } else if (selectedSquads.length > 0) {
+            // 드래그 거리가 길면 진형 이동으로 처리합니다.
+            const startPos = { x: moveRect.x1, y: moveRect.y1 };
+            const endPos = { x: moveRect.x2, y: moveRect.y2 };
+            const centerPos = { x: (startPos.x + endPos.x) / 2, y: (startPos.y + endPos.y) / 2 };
+            selectedSquads.forEach(squad => squad.setFormationShape(startPos, endPos, centerPos));
+            moveIndicators.push(new MoveIndicator(centerPos.x, centerPos.y, 40, 20, 'yellow'));
         }
         moveRect = null;
         e.preventDefault();
