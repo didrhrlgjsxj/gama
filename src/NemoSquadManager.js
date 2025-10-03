@@ -573,19 +573,21 @@ class SquadManager {
 
     mergeSelectedSquads() {
         const selected = this.squads.filter(s => s.selected);
-        if (selected.length < 2) return null;
 
-        const newNemos = [];
+        // 선택된 스쿼드가 2개 미만이면 병합하지 않습니다.
+        if (selected.length < 2) return;
+
+        // 첫 번째 선택된 스쿼드의 팀을 기준으로 병합 가능한 스쿼드만 필터링합니다.
         const team = selected[0].team;
-
-        selected.forEach(s => {
-            newNemos.push(...s.nemos);
-            s.nemos = []; // 기존 스쿼드에서 네모 제거
-        });
-
-        // 선택 해제 및 기존 스쿼드 제거
+        const sameTeamSquads = selected.filter(s => s.team === team);
+        
+        // 같은 팀 스쿼드가 2개 미만이면 병합하지 않습니다.
+        if (sameTeamSquads.length < 2) return;
+        
+        const newNemos = [];
+        sameTeamSquads.forEach(s => { newNemos.push(...s.nemos); s.nemos = []; });
         this.squads = this.squads.filter(s => !s.selected);
-
+        
         const newSquad = new Squad(newNemos, team, this.cellSize);
         newSquad.nemos.forEach(n => n.squad = newSquad);
         newSquad.selected = true;
