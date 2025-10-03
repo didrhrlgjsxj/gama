@@ -594,6 +594,50 @@ class SquadManager {
         this.squads.push(newSquad);
         return newSquad;
     }
+    
+    /**
+     * 공격 대상 스쿼드로부터 우선순위가 높은 타겟 목록과 확률을 반환합니다.
+     * @param {Squad} attackingSquad - 공격하는 스쿼드
+     * @param {Squad} targetSquad - 공격받는 스쿼드
+     * @returns {{targets: Nemo[], probabilities: number[]}} - 타겟 네모 객체 배열과 각 타겟에 대한 공격 확률 배열
+     */
+    getPrioritizedTargets(attackingSquad, targetSquad) {
+        if (!attackingSquad || !targetSquad || targetSquad.nemos.length === 0) {
+            return { targets: [], probabilities: [] };
+        }
+
+        const attackerCenter = attackingSquad.leader ? { x: attackingSquad.leader.x, y: attackingSquad.leader.y } : { x: 0, y: 0 };
+
+        // 1. 적 스쿼드의 네모들을 정렬합니다.
+        //    - 주 기준: formationLine (오름차순, 앞 대열부터)
+        //    - 부 기준: 공격 스쿼드 리더와의 거리 (오름차순, 가까운 순)
+        const sortedNemos = [...targetSquad.nemos].sort((a, b) => {
+            if (a.formationLine !== b.formationLine) {
+                return a.formationLine - b.formationLine;
+            }
+            const distA = Math.hypot(a.x - attackerCenter.x, a.y - attackerCenter.y);
+            const distB = Math.hypot(b.x - attackerCenter.x, b.y - attackerCenter.y);
+            return distA - distB;
+        });
+
+        // 2. 대상 수를 적 스쿼드 네모 수의 절반으로 제한합니다. (최소 1명)
+        const targetCount = Math.max(1, Math.ceil(targetSquad.nemos.length / 2));
+        const prioritizedTargets = sortedNemos.slice(0, targetCount);
+
+        // 3. 각 타겟에 대한 공격 확률을 계산합니다.
+        //    - 우선순위가 높을수록 (배열 인덱스가 낮을수록) 높은 확률을 가집니다.
+        const weights = prioritizedTargets.map((_, i) => targetCount - i);
+        const totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+        if (totalWeight === 0) {
+            return { targets: prioritizedTargets, probabilities: [] };
+        }
+
+        const probabilities = weights.map(w => w / totalWeight);
+
+        return { targets: prioritizedTargets, probabilities };
+    }
+
 
     // Build squads from given nemos array
     updateSquads(nemos) {

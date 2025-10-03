@@ -675,7 +675,7 @@ function gameLoop() {
 
     // Nemo 업데이트 (플랫폼 업데이트 및 Nemo 이동)
     const enemies = [...nemos, ...workers];
-    nemos.forEach(nemo => nemo.update(enemies));
+    nemos.forEach(nemo => nemo.update(enemies, squadManager));
     resolveCollisions();
 
     workers.forEach(w => w.update(mineralPatches, mineralPieces, storages));

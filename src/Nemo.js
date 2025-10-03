@@ -322,13 +322,37 @@ class Nemo {
     }
 
     // 적과의 거리나 HP를 기준으로 상태를 업데이트
-    update(enemies) {
+    update(enemies, squadManager) {
         const prevX = this.x;
         const prevY = this.y;
 
-        // 현재 시점의 모든 적 목록 저장 (AttackPlatform 등에서 사용)
         this.allEnemies = enemies;
 
+        // 스쿼드 기반의 확률적 타겟팅 로직
+        if (this.squad && this.squad.attackMoveTargetSquad && squadManager) {
+            const { targets, probabilities } = squadManager.getPrioritizedTargets(this.squad, this.squad.attackMoveTargetSquad);
+
+            if (targets.length > 0) {
+                // 확률에 따라 타겟 선택
+                const rand = Math.random();
+                let cumulativeProbability = 0;
+                let targetIndex = -1;
+
+                for (let i = 0; i < probabilities.length; i++) {
+                    cumulativeProbability += probabilities[i];
+                    if (rand <= cumulativeProbability) {
+                        targetIndex = i;
+                        break;
+                    }
+                }
+
+                if (targetIndex !== -1) {
+                    // targetIndex를 사용하여 타겟 설정
+                    this.nearestEnemy = targets[targetIndex];
+                }
+            }
+        }
+        
         // 공격 명령이 내려진 경우 우선 공격 대상 목록에서 가장 가까운 적을 찾는다
         if (this.attackMove) {
             this.attackTargets = this.attackTargets.filter(t => !t.dead);
