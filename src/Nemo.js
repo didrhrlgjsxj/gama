@@ -517,6 +517,10 @@ class Nemo {
             ctx.shadowColor = this.borderColor;
             ctx.shadowBlur = 10;
         }
+        // Add glow effect
+        ctx.shadowColor = this.borderColor;
+        ctx.shadowBlur = 10;
+
         ctx.translate(this.x, this.y);
         if (this.unitType === 'unit') {
             ctx.rotate(this.angle + Math.PI / 2);

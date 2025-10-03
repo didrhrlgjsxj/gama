@@ -42,6 +42,9 @@ class Gear {
     draw(ctx) {
         ctx.save();
         ctx.rotate(this.angle);
+        // Add glow effect that depends on activityWeight
+        ctx.shadowColor = 'gold'; // Adjust color as needed
+        ctx.shadowBlur = 5 + this.activityWeight * 2; // Adjust blur intensity as needed
         const r = this.size / 2;
         const inner = r * 0.6;
         const teeth = this.getTeethCount();
